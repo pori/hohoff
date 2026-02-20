@@ -1,0 +1,31 @@
+.app-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr 340px;
+  grid-template-rows: 100vh;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ─── Sidebar ──────────────────────────────────────────────────── */
+.sidebar {
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ─── Editor area ──────────────────────────────────────────────── */
+.editor-area {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--editor-bg);
+}
+
+/* ─── Chat area ────────────────────────────────────────────────── */
+.chat-area {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}

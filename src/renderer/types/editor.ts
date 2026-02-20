@@ -1,0 +1,36 @@
+export interface FileNode {
+  name: string
+  path: string
+  type: 'file' | 'directory'
+  children?: FileNode[]
+}
+
+export interface ChatMessage {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+}
+
+export type AnnotationType = 'passive_voice' | 'consistency' | 'style'
+
+export interface TextAnnotation {
+  id: string
+  type: AnnotationType
+  from: number
+  to: number
+  matchedText: string
+  message: string
+  suggestion?: string
+}
+
+export type AnalysisMode = 'none' | 'passive_voice' | 'consistency' | 'style'
+
+export type AIMode = 'chat' | 'passive_voice' | 'consistency' | 'style'
+
+export interface AIPayload {
+  mode: AIMode
+  documentContent: string
+  documentPath: string
+  conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>
+  userMessage: string
+}

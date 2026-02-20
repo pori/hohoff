@@ -1,0 +1,38 @@
+.editor-container {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+}
+
+.codemirror-host {
+  height: 100%;
+}
+
+.codemirror-host .cm-editor {
+  height: 100%;
+  outline: none;
+}
+
+.editor-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-family: var(--font-serif);
+  font-size: 15px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.editor-empty p {
+  margin: 0;
+}
+
+.editor-empty-hint {
+  font-size: 12px;
+  opacity: 0.6;
+}

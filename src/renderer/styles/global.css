@@ -1,0 +1,68 @@
+/* ─── Reset ────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ─── Design tokens ────────────────────────────────────────────── */
+:root {
+  /* Background layers */
+  --bg-base:        #131110;
+  --sidebar-bg:     #0f0e0c;
+  --toolbar-bg:     #161412;
+  --editor-bg:      #131110;
+  --message-bg:     #1c1a17;
+  --user-message-bg:#1e1c17;
+  --input-bg:       #1c1a17;
+
+  /* Borders */
+  --border:         #2a2620;
+  --hover-bg:       rgba(167,139,95,0.08);
+  --active-bg:      rgba(167,139,95,0.12);
+
+  /* Text */
+  --text-primary:   #e8e0d0;
+  --text-secondary: #b5a990;
+  --text-muted:     #7a6f5e;
+
+  /* Heading color in editor */
+  --heading-color:  #d4b896;
+
+  /* Accent (aged gold) */
+  --accent:         #a78b5f;
+  --accent-hover:   #c4a870;
+
+  /* Typography */
+  --font-serif:     'Georgia', 'Times New Roman', serif;
+  --font-sans:      -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+}
+
+/* ─── Base ─────────────────────────────────────────────────────── */
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── Scrollbars ───────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}

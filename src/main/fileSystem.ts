@@ -1,0 +1,71 @@
+import { readdir, readFile, writeFile } from 'fs/promises'
+import { join } from 'path'
+import type { FileNode } from '../renderer/types/editor'
+
+const DRAFT_ROOT =
+  process.env.DRAFT_PATH ?? '/Users/pori/WebstormProjects/hohoff/draft'
+
+const PART_ORDER = ['Prologue', 'Content Warning', 'Part I', 'Part II', 'Part III', 'Part IV', 'Epilogue', 'The first time']
+
+function sortDraftNodes(a: FileNode, b: FileNode): number {
+  const aIdx = PART_ORDER.findIndex((o) => a.name.startsWith(o))
+  const bIdx = PART_ORDER.findIndex((o) => b.name.startsWith(o))
+  if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx
+  if (aIdx !== -1) return -1
+  if (bIdx !== -1) return 1
+  return a.name.localeCompare(b.name)
+}
+
+export async function listDraftFiles(): Promise<FileNode[]> {
+  const entries = await readdir(DRAFT_ROOT, { withFileTypes: true })
+  const nodes: FileNode[] = []
+
+  for (const entry of entries) {
+    if (entry.name.startsWith('.')) continue
+    const fullPath = join(DRAFT_ROOT, entry.name)
+
+    if (entry.isDirectory()) {
+      const children = await readdir(fullPath, { withFileTypes: true })
+      const childNodes: FileNode[] = children
+        .filter((c) => c.name.endsWith('.md') && !c.name.startsWith('.'))
+        .map((c) => ({
+          name: c.name.replace(/\.md$/, ''),
+          path: join(fullPath, c.name),
+          type: 'file' as const
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name))
+
+      nodes.push({
+        name: entry.name,
+        path: fullPath,
+        type: 'directory',
+        children: childNodes
+      })
+    } else if (entry.name.endsWith('.md')) {
+      nodes.push({
+        name: entry.name.replace(/\.md$/, ''),
+        path: fullPath,
+        type: 'file'
+      })
+    }
+  }
+
+  return nodes.sort(sortDraftNodes)
+}
+
+function assertInDraftRoot(filePath: string): void {
+  const resolved = filePath.startsWith('/') ? filePath : join(DRAFT_ROOT, filePath)
+  if (!resolved.startsWith(DRAFT_ROOT)) {
+    throw new Error('Access denied: path outside draft directory')
+  }
+}
+
+export async function readMarkdownFile(filePath: string): Promise<string> {
+  assertInDraftRoot(filePath)
+  return await readFile(filePath, 'utf-8')
+}
+
+export async function writeMarkdownFile(filePath: string, content: string): Promise<void> {
+  assertInDraftRoot(filePath)
+  await writeFile(filePath, content, 'utf-8')
+}
