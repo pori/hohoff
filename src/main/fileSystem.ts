@@ -69,3 +69,33 @@ export async function writeMarkdownFile(filePath: string, content: string): Prom
   assertInDraftRoot(filePath)
   await writeFile(filePath, content, 'utf-8')
 }
+
+function countWords(text: string): number {
+  return text.trim() === '' ? 0 : text.trim().split(/\s+/).length
+}
+
+async function collectMarkdownPaths(dir: string): Promise<string[]> {
+  const entries = await readdir(dir, { withFileTypes: true })
+  const paths: string[] = []
+  for (const entry of entries) {
+    if (entry.name.startsWith('.')) continue
+    const fullPath = join(dir, entry.name)
+    if (entry.isDirectory()) {
+      const nested = await collectMarkdownPaths(fullPath)
+      paths.push(...nested)
+    } else if (entry.name.endsWith('.md')) {
+      paths.push(fullPath)
+    }
+  }
+  return paths
+}
+
+export async function getProjectWordCount(): Promise<number> {
+  const paths = await collectMarkdownPaths(DRAFT_ROOT)
+  let total = 0
+  for (const p of paths) {
+    const content = await readFile(p, 'utf-8')
+    total += countWords(content)
+  }
+  return total
+}

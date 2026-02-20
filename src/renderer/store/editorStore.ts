@@ -34,6 +34,10 @@ interface EditorState {
   // Analysis mode
   analysisMode: AnalysisMode
   setAnalysisMode: (mode: AnalysisMode) => void
+
+  // Word counts
+  projectWordCount: number
+  setProjectWordCount: (count: number) => void
 }
 
 export const useEditorStore = create<EditorState>((set, get) => ({
@@ -115,5 +119,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   clearAnnotations: () => set({ annotations: [], analysisMode: 'none' }),
 
   analysisMode: 'none',
-  setAnalysisMode: (analysisMode) => set({ analysisMode })
+  setAnalysisMode: (analysisMode) => set({ analysisMode }),
+
+  projectWordCount: 0,
+  setProjectWordCount: (projectWordCount) => set({ projectWordCount })
 }))

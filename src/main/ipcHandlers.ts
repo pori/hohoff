@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron'
-import { listDraftFiles, readMarkdownFile, writeMarkdownFile } from './fileSystem'
+import { listDraftFiles, readMarkdownFile, writeMarkdownFile, getProjectWordCount } from './fileSystem'
 import { streamMessage } from './aiService'
 import type { AIPayload } from '../renderer/types/editor'
 
@@ -14,6 +14,10 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('fs:writeFile', async (_event, filePath: string, content: string) => {
     await writeMarkdownFile(filePath, content)
+  })
+
+  ipcMain.handle('fs:projectWordCount', async () => {
+    return await getProjectWordCount()
   })
 
   ipcMain.handle('ai:streamMessage', async (event, payload: AIPayload) => {

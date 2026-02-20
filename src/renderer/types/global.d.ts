@@ -11,6 +11,7 @@ declare global {
         onChunk: (chunk: string) => void
       ) => Promise<void>
       removeAIListener: () => void
+      getProjectWordCount: () => Promise<number>
     }
   }
 }

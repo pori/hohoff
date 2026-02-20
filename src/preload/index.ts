@@ -43,5 +43,7 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.removeAllListeners('ai:chunk')
     ipcRenderer.removeAllListeners('ai:done')
     ipcRenderer.removeAllListeners('ai:error')
-  }
+  },
+
+  getProjectWordCount: (): Promise<number> => ipcRenderer.invoke('fs:projectWordCount')
 })

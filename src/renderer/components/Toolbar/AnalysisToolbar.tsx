@@ -1,7 +1,17 @@
+import { useEffect } from 'react'
 import { useEditorStore } from '../../store/editorStore'
 import { detectPassiveVoice } from '../../utils/passiveVoice'
 import { parseAnnotationsFromAIResponse } from '../../utils/annotationParser'
 import './Toolbar.css'
+
+function countWords(text: string): number {
+  return text.trim() === '' ? 0 : text.trim().split(/\s+/).length
+}
+
+function formatWordCount(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`
+  return String(n)
+}
 
 export function AnalysisToolbar(): JSX.Element {
   const {
@@ -19,8 +29,21 @@ export function AnalysisToolbar(): JSX.Element {
     appendToLastAssistantMessage,
     setAILoading,
     setAIError,
-    chatHistory
+    chatHistory,
+    projectWordCount,
+    setProjectWordCount
   } = useEditorStore()
+
+  useEffect(() => {
+    window.api.getProjectWordCount().then(setProjectWordCount).catch(() => {})
+  }, [])
+
+  // Refresh project count after a save (isDirty transitions from true → false)
+  useEffect(() => {
+    if (!isDirty) {
+      window.api.getProjectWordCount().then(setProjectWordCount).catch(() => {})
+    }
+  }, [isDirty])
 
   const hasFile = Boolean(activeFilePath)
 
@@ -78,6 +101,7 @@ export function AnalysisToolbar(): JSX.Element {
 
   const passiveCount = annotations.filter((a) => a.type === 'passive_voice').length
   const otherCount = annotations.filter((a) => a.type !== 'passive_voice').length
+  const docWordCount = countWords(activeFileContent)
 
   return (
     <div className="toolbar">
@@ -130,6 +154,16 @@ export function AnalysisToolbar(): JSX.Element {
       </div>
 
       <div className="toolbar-right">
+        {activeFilePath && (
+          <span
+            className="toolbar-wordcount"
+            title={`This document: ${docWordCount.toLocaleString()} words · Entire project: ${projectWordCount.toLocaleString()} words`}
+          >
+            {formatWordCount(docWordCount)}
+            <span className="toolbar-wordcount-sep">/</span>
+            {formatWordCount(projectWordCount)}
+          </span>
+        )}
         {isDirty && (
           <span className="toolbar-dirty" title="Unsaved changes — press Cmd+S to save">
             ●
