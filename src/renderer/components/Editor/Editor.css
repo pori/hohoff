@@ -57,7 +57,6 @@
   font-size: 13px;
   line-height: 1.5;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-  pointer-events: none;
 }
 
 .annotation-tooltip-divider {
@@ -117,4 +116,27 @@
 .annotation-tooltip-loading {
   color: var(--text-muted);
   font-style: italic;
+}
+
+.annotation-tooltip-apply {
+  display: block;
+  width: 100%;
+  margin-top: 2px;
+  padding: 5px 10px;
+  background: transparent;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  color: var(--accent);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.annotation-tooltip-apply:hover {
+  background: var(--accent);
+  color: var(--bg-base);
 }

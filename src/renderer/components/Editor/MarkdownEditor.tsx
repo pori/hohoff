@@ -3,7 +3,7 @@ import { EditorView, Decoration, type DecorationSet, hoverTooltip, keymap } from
 import { EditorState, StateField, StateEffect, RangeSetBuilder, Compartment } from '@codemirror/state'
 import { markdown } from '@codemirror/lang-markdown'
 import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
-import { history, defaultKeymap, historyKeymap } from '@codemirror/commands'
+import { history, defaultKeymap, historyKeymap, invertedEffects } from '@codemirror/commands'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import { useEditorStore } from '../../store/editorStore'
@@ -24,8 +24,20 @@ const rawAnnotationsField = StateField.define<TextAnnotation[]>({
   }
 })
 
-// Per-session cache: annotation id → lazily generated analysis text
-const tooltipAnalysisCache = new Map<string, string>()
+// Per-session cache: annotation id → { text, suggestion extracted from blockquote }
+const tooltipAnalysisCache = new Map<string, { text: string; suggestion: string | null }>()
+
+// Extract the first blockquote from a markdown string — used as the applicable rewrite
+function extractBlockquote(markdown: string): string | null {
+  const lines = markdown.split('\n')
+  const bqLines: string[] = []
+  for (const line of lines) {
+    if (line.startsWith('> ')) bqLines.push(line.slice(2))
+    else if (line === '>') bqLines.push('')
+  }
+  const text = bqLines.join(' ').trim()
+  return text || null
+}
 
 // Hover tooltip — lazily streams a specific AI analysis for the hovered passage
 const annotationHoverTooltip = hoverTooltip(
@@ -62,9 +74,40 @@ const annotationHoverTooltip = hoverTooltip(
           body.innerHTML = DOMPurify.sanitize(raw)
         }
 
+        function showApplyButton(suggestion: string): void {
+          const btnDivider = document.createElement('div')
+          btnDivider.className = 'annotation-tooltip-divider'
+          dom.appendChild(btnDivider)
+
+          const btn = document.createElement('button')
+          btn.className = 'annotation-tooltip-apply'
+          btn.textContent = 'Apply suggestion'
+          btn.addEventListener('click', () => {
+            const { annotations: anns, setAnnotations } = useEditorStore.getState()
+            const changeSpec = { from: ann.from, to: ann.to, insert: suggestion }
+            // Map surviving annotation positions through the text change so
+            // their from/to reflect the new document offsets.
+            const changeSet = view.state.changes(changeSpec)
+            const remaining = anns
+              .filter(a => a.id !== ann.id)
+              .map(a => ({ ...a, from: changeSet.mapPos(a.from), to: changeSet.mapPos(a.to) }))
+            // Combine text replacement + annotation update in one transaction
+            // so CM history treats them as a single undoable unit (Cmd+Z
+            // restores both the original text and the highlight together).
+            view.dispatch({
+              changes: changeSpec,
+              effects: setAnnotationsEffect.of(remaining)
+            })
+            setAnnotations(remaining)
+            tooltipAnalysisCache.delete(ann.id)
+          })
+          dom.appendChild(btn)
+        }
+
         const cached = tooltipAnalysisCache.get(ann.id)
         if (cached) {
-          showText(cached)
+          showText(cached.text)
+          if (cached.suggestion) showApplyButton(cached.suggestion)
         } else {
           body.classList.add('annotation-tooltip-loading')
           body.innerHTML = 'Analysing…'
@@ -81,7 +124,7 @@ const annotationHoverTooltip = hoverTooltip(
                 documentContent: activeFileContent,
                 documentPath: activeFilePath ?? '',
                 conversationHistory: [],
-                userMessage: `This passage was flagged for ${typeName}: "${ann.matchedText}"\n\nIn 1–2 sentences explain specifically what the issue is in this exact passage, then give a direct rewrite of just this passage. Be concise and specific—no generic advice.`
+                userMessage: `This passage was flagged for ${typeName}: "${ann.matchedText}"\n\nIn 1–2 sentences explain the specific issue, then provide a direct rewrite in a markdown blockquote like this:\n\n> Rewritten passage here.\n\nBe specific to this exact text—no generic advice.`
               },
               (chunk: string) => {
                 if (destroyed) return
@@ -90,14 +133,20 @@ const annotationHoverTooltip = hoverTooltip(
               }
             ).then(() => {
               if (destroyed) return
-              const result = accumulated || ann.message
-              tooltipAnalysisCache.set(ann.id, result)
-              showText(result)
+              const text = accumulated || ann.message
+              const suggestion = extractBlockquote(text) ?? ann.suggestion ?? null
+              tooltipAnalysisCache.set(ann.id, { text, suggestion })
+              showText(text)
+              if (suggestion) showApplyButton(suggestion)
             }).catch(() => {
               if (!destroyed) showText(ann.message)
             })
           } else {
+            // Fallback: use stored message and suggestion
+            const suggestion = ann.suggestion ?? null
+            tooltipAnalysisCache.set(ann.id, { text: ann.message, suggestion })
             showText(ann.message)
+            if (suggestion) showApplyButton(suggestion)
           }
         }
 
@@ -138,6 +187,18 @@ const annotationField = StateField.define<DecorationSet>({
     return deco
   },
   provide: (f) => EditorView.decorations.from(f)
+})
+
+// Teach CM's undo/redo history about annotation state so that Cmd+Z after
+// an Apply also restores the highlight. For every transaction that carries a
+// setAnnotationsEffect we record the *previous* annotation list as the
+// inverse effect; CM history replays it on undo.
+const annotationHistory = invertedEffects.of(tr => {
+  if (tr.effects.some(e => e.is(setAnnotationsEffect))) {
+    const before = tr.startState.field(rawAnnotationsField)
+    return [setAnnotationsEffect.of(before)]
+  }
+  return []
 })
 
 const themeCompartment = new Compartment()
@@ -223,11 +284,25 @@ export function MarkdownEditor(): JSX.Element {
           rawAnnotationsField,
           annotationField,
           annotationHoverTooltip,
+          annotationHistory,
           themeCompartment.of(buildTheme(fontSize, theme === 'dark')),
           EditorView.lineWrapping,
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {
               setContent(update.state.doc.toString())
+            }
+            // When the user Cmd+Z's through an Apply, invertedEffects fires a
+            // setAnnotationsEffect restoring the old list inside CM. Sync that
+            // back to Zustand so the React decoration effect also reflects it.
+            const hasUndoRedo = update.transactions.some(
+              tr => tr.isUserEvent('undo') || tr.isUserEvent('redo')
+            )
+            if (hasUndoRedo) {
+              const prev = update.startState.field(rawAnnotationsField)
+              const curr = update.state.field(rawAnnotationsField)
+              if (prev !== curr) {
+                useEditorStore.getState().setAnnotations(curr)
+              }
             }
           })
         ]
@@ -236,6 +311,16 @@ export function MarkdownEditor(): JSX.Element {
     })
 
     viewRef.current = view
+    // Expose view + undo for dev-mode testing (stripped in production)
+    if (import.meta.env.DEV) {
+      const w = window as unknown as Record<string, unknown>
+      w.__cmView = view
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      import('@codemirror/commands').then(({ undo, redo }) => {
+        w.__cmUndo = () => undo(view)
+        w.__cmRedo = () => redo(view)
+      })
+    }
     return () => {
       view.destroy()
       viewRef.current = null
