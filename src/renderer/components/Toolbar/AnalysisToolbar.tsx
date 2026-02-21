@@ -31,7 +31,9 @@ export function AnalysisToolbar(): JSX.Element {
     setAIError,
     chatHistory,
     projectWordCount,
-    setProjectWordCount
+    setProjectWordCount,
+    fontSize,
+    setFontSize
   } = useEditorStore()
 
   useEffect(() => {
@@ -154,6 +156,24 @@ export function AnalysisToolbar(): JSX.Element {
       </div>
 
       <div className="toolbar-right">
+        <div className="toolbar-fontsize">
+          <button
+            className="toolbar-fontsize-btn"
+            onClick={() => setFontSize(fontSize - 1)}
+            disabled={fontSize <= 11}
+            title="Decrease font size"
+          >
+            A−
+          </button>
+          <button
+            className="toolbar-fontsize-btn"
+            onClick={() => setFontSize(fontSize + 1)}
+            disabled={fontSize >= 24}
+            title="Increase font size"
+          >
+            A+
+          </button>
+        </div>
         {activeFilePath && (
           <span
             className="toolbar-wordcount"

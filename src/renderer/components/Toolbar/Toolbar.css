@@ -96,6 +96,37 @@
   max-width: 260px;
 }
 
+.toolbar-fontsize {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.toolbar-fontsize-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-family: var(--font-sans);
+  padding: 2px 6px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.toolbar-fontsize-btn:hover:not(:disabled) {
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
+.toolbar-fontsize-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
 .toolbar-wordcount {
   color: var(--text-muted);
   font-size: 11px;

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { EditorView, Decoration, type DecorationSet } from '@codemirror/view'
-import { EditorState, StateField, StateEffect, RangeSetBuilder } from '@codemirror/state'
+import { EditorState, StateField, StateEffect, RangeSetBuilder, Compartment } from '@codemirror/state'
 import { markdown } from '@codemirror/lang-markdown'
 import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
 import { history, defaultKeymap, historyKeymap } from '@codemirror/commands'
@@ -44,12 +44,14 @@ const annotationField = StateField.define<DecorationSet>({
   provide: (f) => EditorView.decorations.from(f)
 })
 
-// Dark gothic theme for CodeMirror
-const hohoffTheme = EditorView.theme(
+const themeCompartment = new Compartment()
+
+function buildTheme(fontSize: number): ReturnType<typeof EditorView.theme> {
+  return EditorView.theme(
   {
     '&': {
       height: '100%',
-      fontSize: '15px',
+      fontSize: `${fontSize}px`,
       backgroundColor: 'transparent',
       color: 'var(--text-primary)'
     },
@@ -59,7 +61,7 @@ const hohoffTheme = EditorView.theme(
       overflow: 'auto'
     },
     '.cm-content': {
-      padding: '24px 32px',
+      padding: '16px 20px',
       maxWidth: '740px',
       margin: '0 auto',
       caretColor: 'var(--accent)'
@@ -67,7 +69,7 @@ const hohoffTheme = EditorView.theme(
     '.cm-cursor': { borderLeftColor: 'var(--accent)' },
     '.cm-selectionBackground': { backgroundColor: 'rgba(167,139,95,0.2)' },
     '&.cm-focused .cm-selectionBackground': { backgroundColor: 'rgba(167,139,95,0.3)' },
-    '.cm-line': { padding: '0' },
+    '.cm-line': { padding: '0', marginBottom: '6px' },
     '.cm-gutters': { display: 'none' },
     '.cm-activeLine': { backgroundColor: 'transparent' },
     '.cm-activeLineGutter': { backgroundColor: 'transparent' },
@@ -97,12 +99,13 @@ const hohoffTheme = EditorView.theme(
     }
   },
   { dark: true }
-)
+  )
+}
 
 export function MarkdownEditor(): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
-  const { activeFilePath, activeFileContent, setContent, annotations } = useEditorStore()
+  const { activeFilePath, activeFileContent, setContent, annotations, fontSize } = useEditorStore()
 
   // Initialize CodeMirror once
   useEffect(() => {
@@ -117,7 +120,7 @@ export function MarkdownEditor(): JSX.Element {
           markdown(),
           syntaxHighlighting(defaultHighlightStyle),
           annotationField,
-          hohoffTheme,
+          themeCompartment.of(buildTheme(fontSize)),
           EditorView.lineWrapping,
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {
@@ -157,6 +160,13 @@ export function MarkdownEditor(): JSX.Element {
     if (!view) return
     view.dispatch({ effects: setAnnotationsEffect.of(annotations) })
   }, [annotations])
+
+  // Reconfigure theme when font size changes
+  useEffect(() => {
+    const view = viewRef.current
+    if (!view) return
+    view.dispatch({ effects: themeCompartment.reconfigure(buildTheme(fontSize)) })
+  }, [fontSize])
 
   return (
     <div className="editor-container">

@@ -38,6 +38,10 @@ interface EditorState {
   // Word counts
   projectWordCount: number
   setProjectWordCount: (count: number) => void
+
+  // Editor font size
+  fontSize: number
+  setFontSize: (size: number) => void
 }
 
 export const useEditorStore = create<EditorState>((set, get) => ({
@@ -122,5 +126,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setAnalysisMode: (analysisMode) => set({ analysisMode }),
 
   projectWordCount: 0,
-  setProjectWordCount: (projectWordCount) => set({ projectWordCount })
+  setProjectWordCount: (projectWordCount) => set({ projectWordCount }),
+
+  fontSize: Number(localStorage.getItem('editorFontSize')) || 15,
+  setFontSize: (size) => {
+    const clamped = Math.max(11, Math.min(24, size))
+    localStorage.setItem('editorFontSize', String(clamped))
+    set({ fontSize: clamped })
+  }
 }))
