@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { EditorView, Decoration, type DecorationSet, hoverTooltip, keymap } from '@codemirror/view'
-import { EditorState, StateField, StateEffect, RangeSetBuilder, Compartment } from '@codemirror/state'
+import { EditorState, StateField, StateEffect, RangeSetBuilder, Compartment, Transaction } from '@codemirror/state'
 import { markdown } from '@codemirror/lang-markdown'
 import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
 import { history, defaultKeymap, historyKeymap, invertedEffects } from '@codemirror/commands'
@@ -194,7 +194,11 @@ const annotationField = StateField.define<DecorationSet>({
 // setAnnotationsEffect we record the *previous* annotation list as the
 // inverse effect; CM history replays it on undo.
 const annotationHistory = invertedEffects.of(tr => {
-  if (tr.effects.some(e => e.is(setAnnotationsEffect))) {
+  // Only track annotation changes that accompany a document edit (i.e. an
+  // Apply). External updates — critique results loading, store clears — have
+  // no doc change and must NOT enter the undo stack, otherwise Undo removes
+  // highlights before touching any text.
+  if (tr.docChanged && tr.effects.some(e => e.is(setAnnotationsEffect))) {
     const before = tr.startState.field(rawAnnotationsField)
     return [setAnnotationsEffect.of(before)]
   }
@@ -333,8 +337,11 @@ export function MarkdownEditor(): JSX.Element {
     if (!view) return
     const current = view.state.doc.toString()
     if (current !== activeFileContent) {
+      // Mark the file-load as non-undoable: loading a file should never
+      // appear in the undo stack, so Cmd+Z can't empty the document.
       view.dispatch({
-        changes: { from: 0, to: current.length, insert: activeFileContent }
+        changes: { from: 0, to: current.length, insert: activeFileContent },
+        annotations: Transaction.addToHistory.of(false)
       })
       // Scroll to top on file switch
       view.dispatch({ selection: { anchor: 0 } })
