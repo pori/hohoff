@@ -38,6 +38,30 @@
   --font-sans:      -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
 }
 
+/* ─── Light mode token overrides (sepia) ──────────────────────── */
+html.light {
+  --bg-base:        #f2ead8;
+  --sidebar-bg:     #e8dfc8;
+  --toolbar-bg:     #ddd4bc;
+  --editor-bg:      #f2ead8;
+  --message-bg:     #e8dfc8;
+  --user-message-bg:#ddd4bc;
+  --input-bg:       #e8dfc8;
+
+  --border:         #c4b89a;
+  --hover-bg:       rgba(120,88,40,0.08);
+  --active-bg:      rgba(120,88,40,0.15);
+
+  --text-primary:   #241c0e;
+  --text-secondary: #52401e;
+  --text-muted:     #7a6640;
+
+  --heading-color:  #3c2c0e;
+
+  --accent:         #7a5c28;
+  --accent-hover:   #9a7030;
+}
+
 /* ─── Base ─────────────────────────────────────────────────────── */
 html, body, #root {
   height: 100%;

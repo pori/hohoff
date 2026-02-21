@@ -7,12 +7,13 @@ import { useEditorStore } from './store/editorStore'
 import './styles/app.css'
 
 export default function App(): JSX.Element {
-  const { setFileTree, activeFilePath, isDirty, markSaved, activeFileContent } =
+  const { setFileTree, activeFilePath, isDirty, markSaved, activeFileContent, theme, toggleTheme } =
     useEditorStore()
 
-  // Load file tree on mount
+  // Load file tree on mount and apply persisted theme
   useEffect(() => {
     window.api.listFiles().then(setFileTree)
+    document.documentElement.classList.toggle('light', theme === 'light')
   }, [])
 
   // Handle Cmd+S / Ctrl+S
@@ -34,6 +35,13 @@ export default function App(): JSX.Element {
     <div className="app-layout">
       <div className="app-titlebar">
         <span className="app-titlebar-title">Hohoff Editor</span>
+        <button
+          className="app-titlebar-theme-btn"
+          onClick={toggleTheme}
+          title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          {theme === 'dark' ? '☀' : '☾'}
+        </button>
       </div>
       <aside className="sidebar">
         <FileTree />

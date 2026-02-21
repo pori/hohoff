@@ -46,7 +46,7 @@ const annotationField = StateField.define<DecorationSet>({
 
 const themeCompartment = new Compartment()
 
-function buildTheme(fontSize: number): ReturnType<typeof EditorView.theme> {
+function buildTheme(fontSize: number, dark: boolean): ReturnType<typeof EditorView.theme> {
   return EditorView.theme(
   {
     '&': {
@@ -67,8 +67,8 @@ function buildTheme(fontSize: number): ReturnType<typeof EditorView.theme> {
       caretColor: 'var(--accent)'
     },
     '.cm-cursor': { borderLeftColor: 'var(--accent)' },
-    '.cm-selectionBackground': { backgroundColor: 'rgba(167,139,95,0.2)' },
-    '&.cm-focused .cm-selectionBackground': { backgroundColor: 'rgba(167,139,95,0.3)' },
+    '.cm-selectionBackground': { backgroundColor: 'var(--active-bg)' },
+    '&.cm-focused .cm-selectionBackground': { backgroundColor: 'var(--active-bg)' },
     '.cm-line': { padding: '0', marginBottom: '6px' },
     '.cm-gutters': { display: 'none' },
     '.cm-activeLine': { backgroundColor: 'transparent' },
@@ -98,14 +98,14 @@ function buildTheme(fontSize: number): ReturnType<typeof EditorView.theme> {
       borderRadius: '2px'
     }
   },
-  { dark: true }
+  { dark }
   )
 }
 
 export function MarkdownEditor(): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
-  const { activeFilePath, activeFileContent, setContent, annotations, fontSize } = useEditorStore()
+  const { activeFilePath, activeFileContent, setContent, annotations, fontSize, theme } = useEditorStore()
 
   // Initialize CodeMirror once
   useEffect(() => {
@@ -120,7 +120,7 @@ export function MarkdownEditor(): JSX.Element {
           markdown(),
           syntaxHighlighting(defaultHighlightStyle),
           annotationField,
-          themeCompartment.of(buildTheme(fontSize)),
+          themeCompartment.of(buildTheme(fontSize, theme === 'dark')),
           EditorView.lineWrapping,
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {
@@ -161,12 +161,12 @@ export function MarkdownEditor(): JSX.Element {
     view.dispatch({ effects: setAnnotationsEffect.of(annotations) })
   }, [annotations])
 
-  // Reconfigure theme when font size changes
+  // Reconfigure theme when font size or colour theme changes
   useEffect(() => {
     const view = viewRef.current
     if (!view) return
-    view.dispatch({ effects: themeCompartment.reconfigure(buildTheme(fontSize)) })
-  }, [fontSize])
+    view.dispatch({ effects: themeCompartment.reconfigure(buildTheme(fontSize, theme === 'dark')) })
+  }, [fontSize, theme])
 
   return (
     <div className="editor-container">

@@ -42,6 +42,10 @@ interface EditorState {
   // Editor font size
   fontSize: number
   setFontSize: (size: number) => void
+
+  // Theme
+  theme: 'dark' | 'light'
+  toggleTheme: () => void
 }
 
 export const useEditorStore = create<EditorState>((set, get) => ({
@@ -133,5 +137,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const clamped = Math.max(11, Math.min(24, size))
     localStorage.setItem('editorFontSize', String(clamped))
     set({ fontSize: clamped })
+  },
+
+  theme: (localStorage.getItem('editorTheme') as 'dark' | 'light') || 'dark',
+  toggleTheme: () => {
+    set((s) => {
+      const next = s.theme === 'dark' ? 'light' : 'dark'
+      localStorage.setItem('editorTheme', next)
+      document.documentElement.classList.toggle('light', next === 'light')
+      return { theme: next }
+    })
   }
 }))

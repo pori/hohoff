@@ -28,6 +28,25 @@
   text-transform: uppercase;
 }
 
+.app-titlebar-theme-btn {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  line-height: 1;
+  -webkit-app-region: no-drag;
+  transition: color 0.15s;
+}
+
+.app-titlebar-theme-btn:hover {
+  color: var(--text-primary);
+}
+
 /* ─── Sidebar ──────────────────────────────────────────────────── */
 .sidebar {
   background: var(--sidebar-bg);
