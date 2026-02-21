@@ -11,7 +11,7 @@ export interface ChatMessage {
   content: string
 }
 
-export type AnnotationType = 'passive_voice' | 'consistency' | 'style'
+export type AnnotationType = 'passive_voice' | 'consistency' | 'style' | 'critique'
 
 export interface TextAnnotation {
   id: string
@@ -23,9 +23,9 @@ export interface TextAnnotation {
   suggestion?: string
 }
 
-export type AnalysisMode = 'none' | 'passive_voice' | 'consistency' | 'style'
+export type AnalysisMode = 'none' | 'passive_voice' | 'consistency' | 'style' | 'critique'
 
-export type AIMode = 'chat' | 'passive_voice' | 'consistency' | 'style'
+export type AIMode = 'chat' | 'passive_voice' | 'consistency' | 'style' | 'critique'
 
 export interface AIPayload {
   mode: AIMode

@@ -66,7 +66,27 @@ For each suggestion:
 ISSUE: [type: Pacing / Sentence Variety / Show-Don't-Tell / Atmosphere / Dialogue]
 PASSAGE: "[exact quoted text]"
 PROBLEM: [specific explanation]
-SUGGESTION: [concrete rewrite or approach]`
+SUGGESTION: [concrete rewrite or approach]`,
+
+    critique: `Give an honest, detailed critique of this chapter as a whole. Structure your response as follows:
+
+**Overall impression** (2–3 sentences on what the chapter achieves and its most significant weakness)
+
+**What works well**
+Identify 2–4 specific strengths — scenes, lines, or moments that land effectively. Quote the passage and explain why it works.
+
+STRENGTH: "[exact quoted passage]"
+WHY: [explanation]
+
+**What needs work**
+Identify 2–4 areas where the chapter falls short. Be direct. Quote the passage and give a concrete direction for improvement.
+
+ISSUE: "[exact quoted passage]"
+PROBLEM: [explanation]
+SUGGESTION: [concrete direction]
+
+**One priority**
+Name the single most important thing to fix in a revision of this chapter.`
   }
 
   return `${chapterContext}\n\n${modeInstructions[payload.mode]}`

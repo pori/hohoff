@@ -4,6 +4,19 @@
   grid-template-rows: 38px calc(100vh - 38px);
   height: 100vh;
   overflow: hidden;
+  transition: grid-template-columns 0.2s ease;
+}
+
+.app-layout[data-sidebar='closed'] {
+  grid-template-columns: 0 1fr 340px;
+}
+
+.app-layout[data-chat='closed'] {
+  grid-template-columns: 220px 1fr 0;
+}
+
+.app-layout[data-sidebar='closed'][data-chat='closed'] {
+  grid-template-columns: 0 1fr 0;
 }
 
 .app-titlebar {
@@ -11,9 +24,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 10px;
   background: var(--sidebar-bg);
   border-bottom: 1px solid var(--border);
-  /* Makes the entire bar draggable so the window can be moved */
   -webkit-app-region: drag;
   user-select: none;
   position: relative;
@@ -28,9 +41,55 @@
   text-transform: uppercase;
 }
 
-.app-titlebar-theme-btn {
+/* ─── Three-segment layout toggle ─────────────────────────────── */
+.app-layout-toggle {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  -webkit-app-region: no-drag;
+}
+
+.app-layout-toggle-seg {
+  width: 16px;
+  height: 12px;
+  border-radius: 2px;
+  border: 1px solid var(--border);
+  background: none;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.app-layout-toggle-seg:hover {
+  border-color: var(--text-muted);
+}
+
+.app-layout-toggle-seg.active {
+  background: var(--text-muted);
+  border-color: var(--text-muted);
+}
+
+/* Middle segment: wider, non-interactive, always "on" */
+.app-layout-toggle-seg--mid {
+  width: 22px;
+  cursor: default;
+  background: var(--text-muted);
+  border-color: var(--text-muted);
+  opacity: 0.35;
+}
+
+/* ─── Right-side controls cluster ─────────────────────────────── */
+.app-titlebar-right {
   position: absolute;
   right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  -webkit-app-region: no-drag;
+}
+
+/* ─── Theme toggle button ──────────────────────────────────────── */
+.app-titlebar-theme-btn {
   background: none;
   border: none;
   color: var(--text-muted);

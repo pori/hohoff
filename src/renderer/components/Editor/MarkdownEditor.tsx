@@ -1,16 +1,113 @@
 import { useEffect, useRef } from 'react'
-import { EditorView, Decoration, type DecorationSet } from '@codemirror/view'
+import { EditorView, Decoration, type DecorationSet, hoverTooltip, keymap } from '@codemirror/view'
 import { EditorState, StateField, StateEffect, RangeSetBuilder, Compartment } from '@codemirror/state'
 import { markdown } from '@codemirror/lang-markdown'
 import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
 import { history, defaultKeymap, historyKeymap } from '@codemirror/commands'
-import { keymap } from '@codemirror/view'
+import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 import { useEditorStore } from '../../store/editorStore'
 import type { TextAnnotation } from '../../types/editor'
 import './Editor.css'
 
 // StateEffect to push new annotations into the editor
 export const setAnnotationsEffect = StateEffect.define<TextAnnotation[]>()
+
+// StateField stores the raw annotation array for hover lookup
+const rawAnnotationsField = StateField.define<TextAnnotation[]>({
+  create: () => [],
+  update(annotations, tr) {
+    for (const effect of tr.effects) {
+      if (effect.is(setAnnotationsEffect)) return effect.value
+    }
+    return annotations
+  }
+})
+
+// Per-session cache: annotation id → lazily generated analysis text
+const tooltipAnalysisCache = new Map<string, string>()
+
+// Hover tooltip — lazily streams a specific AI analysis for the hovered passage
+const annotationHoverTooltip = hoverTooltip(
+  (view, pos) => {
+    const annotations = view.state.field(rawAnnotationsField)
+    const ann = annotations.find(a => pos >= a.from && pos <= a.to)
+    if (!ann) return null
+
+    return {
+      pos: ann.from,
+      end: ann.to,
+      above: true,
+      create() {
+        const dom = document.createElement('div')
+        dom.className = 'annotation-tooltip'
+
+        const label = document.createElement('span')
+        label.className = 'annotation-tooltip-label'
+        label.textContent = ann.type.replace(/_/g, ' ')
+        dom.appendChild(label)
+
+        const divider = document.createElement('div')
+        divider.className = 'annotation-tooltip-divider'
+        dom.appendChild(divider)
+
+        const body = document.createElement('div')
+        body.className = 'annotation-tooltip-body'
+        dom.appendChild(body)
+
+        let destroyed = false
+
+        function showText(text: string, streaming = false): void {
+          body.classList.remove('annotation-tooltip-loading')
+          const raw = marked.parse(streaming ? text + ' ▋' : text) as string
+          body.innerHTML = DOMPurify.sanitize(raw)
+        }
+
+        const cached = tooltipAnalysisCache.get(ann.id)
+        if (cached) {
+          showText(cached)
+        } else {
+          body.classList.add('annotation-tooltip-loading')
+          body.innerHTML = 'Analysing…'
+
+          const { activeFilePath, activeFileContent } = useEditorStore.getState()
+          const typeName = ann.type.replace(/_/g, ' ')
+          let accumulated = ''
+
+          const api = (window as unknown as { api?: { streamAIMessage: (p: unknown, cb: (c: string) => void) => Promise<void> } }).api
+          if (api?.streamAIMessage) {
+            api.streamAIMessage(
+              {
+                mode: 'chat',
+                documentContent: activeFileContent,
+                documentPath: activeFilePath ?? '',
+                conversationHistory: [],
+                userMessage: `This passage was flagged for ${typeName}: "${ann.matchedText}"\n\nIn 1–2 sentences explain specifically what the issue is in this exact passage, then give a direct rewrite of just this passage. Be concise and specific—no generic advice.`
+              },
+              (chunk: string) => {
+                if (destroyed) return
+                accumulated += chunk
+                showText(accumulated, true)
+              }
+            ).then(() => {
+              if (destroyed) return
+              const result = accumulated || ann.message
+              tooltipAnalysisCache.set(ann.id, result)
+              showText(result)
+            }).catch(() => {
+              if (!destroyed) showText(ann.message)
+            })
+          } else {
+            showText(ann.message)
+          }
+        }
+
+        return { dom, destroy() { destroyed = true } }
+      }
+    }
+  },
+  { hoverTime: 500 }
+)
 
 // StateField tracks the decoration set derived from annotations
 const annotationField = StateField.define<DecorationSet>({
@@ -31,7 +128,7 @@ const annotationField = StateField.define<DecorationSet>({
               to,
               Decoration.mark({
                 class: `annotation annotation-${ann.type}`,
-                attributes: { 'data-id': ann.id, title: ann.message }
+                attributes: { 'data-id': ann.id }
               })
             )
           }
@@ -96,6 +193,11 @@ function buildTheme(fontSize: number, dark: boolean): ReturnType<typeof EditorVi
       backgroundColor: 'rgba(80, 160, 255, 0.18)',
       borderBottom: '2px solid rgba(80, 160, 255, 0.7)',
       borderRadius: '2px'
+    },
+    '.annotation-critique': {
+      backgroundColor: 'rgba(160, 80, 220, 0.18)',
+      borderBottom: '2px solid rgba(160, 80, 220, 0.7)',
+      borderRadius: '2px'
     }
   },
   { dark }
@@ -119,7 +221,9 @@ export function MarkdownEditor(): JSX.Element {
           keymap.of([...defaultKeymap, ...historyKeymap]),
           markdown(),
           syntaxHighlighting(defaultHighlightStyle),
+          rawAnnotationsField,
           annotationField,
+          annotationHoverTooltip,
           themeCompartment.of(buildTheme(fontSize, theme === 'dark')),
           EditorView.lineWrapping,
           EditorView.updateListener.of((update) => {

@@ -56,7 +56,7 @@ export function AnalysisToolbar(): JSX.Element {
     setAnalysisMode('passive_voice')
   }
 
-  const runAIAnalysis = async (mode: 'consistency' | 'style'): Promise<void> => {
+  const runAIAnalysis = async (mode: 'consistency' | 'style' | 'critique'): Promise<void> => {
     if (!activeFilePath || isAILoading) return
 
     setAnalysisMode(mode)
@@ -65,7 +65,9 @@ export function AnalysisToolbar(): JSX.Element {
     const prompt =
       mode === 'consistency'
         ? 'Please check this chapter for consistency issues (character names, timeline, repeated phrases).'
-        : 'Please analyze the style and pacing of this chapter and suggest improvements.'
+        : mode === 'style'
+          ? 'Please analyze the style and pacing of this chapter and suggest improvements.'
+          : 'Please give me an honest critique of this chapter.'
 
     addUserMessage(prompt)
     startAssistantMessage()
@@ -140,6 +142,18 @@ export function AnalysisToolbar(): JSX.Element {
         >
           {isAILoading && analysisMode === 'style' ? 'Analyzing…' : 'Style'}
           {analysisMode === 'style' && otherCount > 0 && (
+            <span className="toolbar-badge">{otherCount}</span>
+          )}
+        </button>
+
+        <button
+          className={`toolbar-btn${analysisMode === 'critique' ? ' active' : ''}`}
+          onClick={() => runAIAnalysis('critique')}
+          disabled={!hasFile || isAILoading}
+          title="Honest overall critique of this chapter via AI"
+        >
+          {isAILoading && analysisMode === 'critique' ? 'Reading…' : 'Critique'}
+          {analysisMode === 'critique' && otherCount > 0 && (
             <span className="toolbar-badge">{otherCount}</span>
           )}
         </button>

@@ -74,23 +74,24 @@ function classifyType(contextBefore: string): AnnotationType {
 }
 
 function extractSuggestion(text: string): string | undefined {
-  // Look for SUGGESTION: "..." pattern
-  const m = text.match(/SUGGESTION:\s*["""'](.{5,200}?)["""']/i)
+  // Look for SUGGESTION: "..." pattern — allow up to 400 chars to capture full rewrites
+  const m = text.match(/SUGGESTION:\s*["""'](.{5,400}?)["""']/i)
   return m?.[1]?.trim()
 }
 
 function extractMessage(response: string, quoteIndex: number): string {
   // Look back for ISSUE: or PROBLEM: line
-  const before = response.slice(Math.max(0, quoteIndex - 300), quoteIndex)
+  const before = response.slice(Math.max(0, quoteIndex - 400), quoteIndex)
   const issueMatch = before.match(/(?:ISSUE|PROBLEM|WHY):\s*(.+?)(?:\n|$)/gi)
   if (issueMatch) {
     const last = issueMatch[issueMatch.length - 1]
-    return last.replace(/^(?:ISSUE|PROBLEM|WHY):\s*/i, '').trim().slice(0, 120)
+    const text = last.replace(/^(?:ISSUE|PROBLEM|WHY):\s*/i, '').trim()
+    return text.length > 200 ? text.slice(0, 200) + '…' : text
   }
   // Fall back to the last sentence before the quote
   const sentences = before.split(/[.!?]\s+/)
-  const last = sentences[sentences.length - 1]?.trim()
-  return last?.slice(0, 120) ?? ''
+  const last = sentences[sentences.length - 1]?.trim() ?? ''
+  return last.length > 200 ? last.slice(0, 200) + '…' : last
 }
 
 // Find a normalized string in a document (ignores whitespace differences)
