@@ -15,6 +15,7 @@ function createWindow(): void {
     minWidth: 900,
     minHeight: 600,
     title: 'Hohoff Editor',
+    titleBarStyle: 'hiddenInset',
     show: false,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),

@@ -32,6 +32,9 @@ export default function App(): JSX.Element {
 
   return (
     <div className="app-layout">
+      <div className="app-titlebar">
+        <span className="app-titlebar-title">Hohoff Editor</span>
+      </div>
       <aside className="sidebar">
         <FileTree />
       </aside>

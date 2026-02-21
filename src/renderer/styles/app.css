@@ -1,9 +1,31 @@
 .app-layout {
   display: grid;
   grid-template-columns: 220px 1fr 340px;
-  grid-template-rows: 100vh;
+  grid-template-rows: 38px calc(100vh - 38px);
   height: 100vh;
   overflow: hidden;
+}
+
+.app-titlebar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--sidebar-bg);
+  border-bottom: 1px solid var(--border);
+  /* Makes the entire bar draggable so the window can be moved */
+  -webkit-app-region: drag;
+  user-select: none;
+  position: relative;
+}
+
+.app-titlebar-title {
+  font-size: 12px;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  text-transform: uppercase;
 }
 
 /* ─── Sidebar ──────────────────────────────────────────────────── */
