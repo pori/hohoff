@@ -35,6 +35,9 @@ interface EditorState {
   analysisMode: AnalysisMode
   setAnalysisMode: (mode: AnalysisMode) => void
 
+  // File tree reordering
+  moveNode: (dirPath: string, fromIdx: number, toIdx: number) => void
+
   // Word counts
   projectWordCount: number
   setProjectWordCount: (count: number) => void
@@ -51,6 +54,37 @@ interface EditorState {
 export const useEditorStore = create<EditorState>((set, get) => ({
   fileTree: [],
   setFileTree: (fileTree) => set({ fileTree }),
+
+  moveNode: (dirPath, fromIdx, toIdx) => {
+    set((s) => {
+      let newTree: typeof s.fileTree
+
+      if (dirPath === '__root__') {
+        newTree = [...s.fileTree]
+        const [moved] = newTree.splice(fromIdx, 1)
+        newTree.splice(toIdx, 0, moved)
+      } else {
+        newTree = s.fileTree.map((node) => {
+          if (node.path !== dirPath || !node.children) return node
+          const children = [...node.children]
+          const [moved] = children.splice(fromIdx, 1)
+          children.splice(toIdx, 0, moved)
+          return { ...node, children }
+        })
+      }
+
+      const orderMap: Record<string, string[]> = {}
+      orderMap['__root__'] = newTree.map((n) => n.name)
+      for (const node of newTree) {
+        if (node.type === 'directory' && node.children) {
+          orderMap[node.path] = node.children.map((c) => c.name)
+        }
+      }
+      window.api.saveOrder(orderMap).catch(console.error)
+
+      return { fileTree: newTree }
+    })
+  },
 
   activeFilePath: null,
   activeFileContent: '',

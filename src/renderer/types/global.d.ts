@@ -12,6 +12,7 @@ declare global {
       ) => Promise<void>
       removeAIListener: () => void
       getProjectWordCount: () => Promise<number>
+      saveOrder: (order: Record<string, string[]>) => Promise<void>
     }
   }
 }

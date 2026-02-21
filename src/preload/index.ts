@@ -45,5 +45,8 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.removeAllListeners('ai:error')
   },
 
-  getProjectWordCount: (): Promise<number> => ipcRenderer.invoke('fs:projectWordCount')
+  getProjectWordCount: (): Promise<number> => ipcRenderer.invoke('fs:projectWordCount'),
+
+  saveOrder: (order: Record<string, string[]>): Promise<void> =>
+    ipcRenderer.invoke('fs:saveOrder', order)
 })

@@ -10,7 +10,13 @@ export function FileTree(): JSX.Element {
       <div className="file-tree-header">HOHOFF</div>
       <div className="file-tree-list">
         {fileTree.map((node) => (
-          <FileTreeNode key={node.path} node={node} depth={0} />
+          <FileTreeNode
+            key={node.path}
+            node={node}
+            depth={0}
+            dirPath="__root__"
+            siblings={fileTree}
+          />
         ))}
       </div>
     </nav>

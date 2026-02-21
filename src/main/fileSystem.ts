@@ -5,6 +5,8 @@ import type { FileNode } from '../renderer/types/editor'
 const DRAFT_ROOT =
   process.env.DRAFT_PATH ?? '/Users/pori/WebstormProjects/hohoff/draft'
 
+const ORDER_FILE = join(DRAFT_ROOT, '.order.json')
+
 const PART_ORDER = ['Prologue', 'Content Warning', 'Part I', 'Part II', 'Part III', 'Part IV', 'Epilogue', 'The first time']
 
 function sortDraftNodes(a: FileNode, b: FileNode): number {
@@ -16,8 +18,30 @@ function sortDraftNodes(a: FileNode, b: FileNode): number {
   return a.name.localeCompare(b.name)
 }
 
+async function readOrderFile(): Promise<Record<string, string[]>> {
+  try {
+    return JSON.parse(await readFile(ORDER_FILE, 'utf-8'))
+  } catch {
+    return {}
+  }
+}
+
+export async function saveOrderFile(order: Record<string, string[]>): Promise<void> {
+  await writeFile(ORDER_FILE, JSON.stringify(order, null, 2), 'utf-8')
+}
+
+function applyOrder(nodes: FileNode[], savedNames: string[]): FileNode[] {
+  const map = new Map(nodes.map((n) => [n.name, n]))
+  const ordered = savedNames.filter((n) => map.has(n)).map((n) => map.get(n)!)
+  const rest = nodes.filter((n) => !savedNames.includes(n.name))
+  return [...ordered, ...rest]
+}
+
 export async function listDraftFiles(): Promise<FileNode[]> {
-  const entries = await readdir(DRAFT_ROOT, { withFileTypes: true })
+  const [entries, order] = await Promise.all([
+    readdir(DRAFT_ROOT, { withFileTypes: true }),
+    readOrderFile()
+  ])
   const nodes: FileNode[] = []
 
   for (const entry of entries) {
@@ -26,14 +50,19 @@ export async function listDraftFiles(): Promise<FileNode[]> {
 
     if (entry.isDirectory()) {
       const children = await readdir(fullPath, { withFileTypes: true })
-      const childNodes: FileNode[] = children
+      let childNodes: FileNode[] = children
         .filter((c) => c.name.endsWith('.md') && !c.name.startsWith('.'))
         .map((c) => ({
           name: c.name.replace(/\.md$/, ''),
           path: join(fullPath, c.name),
           type: 'file' as const
         }))
-        .sort((a, b) => a.name.localeCompare(b.name))
+
+      if (order[fullPath]) {
+        childNodes = applyOrder(childNodes, order[fullPath])
+      } else {
+        childNodes = childNodes.sort((a, b) => a.name.localeCompare(b.name))
+      }
 
       nodes.push({
         name: entry.name,
@@ -50,6 +79,9 @@ export async function listDraftFiles(): Promise<FileNode[]> {
     }
   }
 
+  if (order['__root__']) {
+    return applyOrder(nodes, order['__root__'])
+  }
   return nodes.sort(sortDraftNodes)
 }
 
