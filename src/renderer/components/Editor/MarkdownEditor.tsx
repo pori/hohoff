@@ -35,8 +35,7 @@ const annotationHoverTooltip = hoverTooltip(
     if (!ann) return null
 
     return {
-      pos: ann.from,
-      end: ann.to,
+      pos,
       above: true,
       create() {
         const dom = document.createElement('div')
