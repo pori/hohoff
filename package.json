@@ -42,11 +42,18 @@
   "build": {
     "appId": "com.hohoff.editor",
     "productName": "Hohoff Editor",
+    "icon": "resources/icon.png",
     "mac": {
       "target": "dmg"
     },
     "files": [
       "out/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/icon.png",
+        "to": "icon.png"
+      }
     ]
   }
 }

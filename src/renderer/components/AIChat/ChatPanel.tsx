@@ -1,9 +1,12 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import { useEditorStore } from '../../store/editorStore'
 import { ChatMessageItem } from './ChatMessageItem'
 import { ChatInput } from './ChatInput'
+import { FeedbackPanel } from '../Feedback/FeedbackPanel'
 import { parseAnnotationsFromAIResponse } from '../../utils/annotationParser'
 import './Chat.css'
+
+type TabId = 'chat' | 'feedback'
 
 export function ChatPanel(): JSX.Element {
   const {
@@ -13,6 +16,7 @@ export function ChatPanel(): JSX.Element {
     activeFileContent,
     activeFilePath,
     analysisMode,
+    annotations,
     addUserMessage,
     startAssistantMessage,
     appendToLastAssistantMessage,
@@ -22,7 +26,19 @@ export function ChatPanel(): JSX.Element {
     clearChat
   } = useEditorStore()
 
+  const [tab, setTab] = useState<TabId>('chat')
   const scrollRef = useRef<HTMLDivElement>(null)
+  const prevAnnotationCountRef = useRef(annotations.length)
+
+  // Auto-switch to Feedback tab the first time annotations appear (0 → >0)
+  useEffect(() => {
+    const prev = prevAnnotationCountRef.current
+    const curr = annotations.length
+    if (prev === 0 && curr > 0) {
+      setTab('feedback')
+    }
+    prevAnnotationCountRef.current = curr
+  }, [annotations])
 
   const sendMessage = async (text: string): Promise<void> => {
     if (!activeFilePath || isAILoading) return
@@ -53,9 +69,9 @@ export function ChatPanel(): JSX.Element {
       const currentHistory = useEditorStore.getState().chatHistory
       const lastMsg = currentHistory[currentHistory.length - 1]
       if (lastMsg?.role === 'assistant' && lastMsg.content.length > 0) {
-        const annotations = parseAnnotationsFromAIResponse(lastMsg.content, activeFileContent)
-        if (annotations.length > 0) {
-          setAnnotations(annotations)
+        const parsed = parseAnnotationsFromAIResponse(lastMsg.content, activeFileContent)
+        if (parsed.length > 0) {
+          setAnnotations(parsed)
         }
       }
     } catch (err) {
@@ -78,40 +94,64 @@ export function ChatPanel(): JSX.Element {
 
   return (
     <div className="chat-panel">
-      <div className="chat-header">
-        <span>AI Editor</span>
-        {chatHistory.length > 0 && (
+      {/* ── Tab bar ── */}
+      <div className="chat-tabs">
+        <button
+          className={`chat-tab${tab === 'chat' ? ' chat-tab-active' : ''}`}
+          onClick={() => setTab('chat')}
+        >
+          Chat
+        </button>
+        <button
+          className={`chat-tab${tab === 'feedback' ? ' chat-tab-active' : ''}`}
+          onClick={() => setTab('feedback')}
+        >
+          Feedback
+          {annotations.length > 0 && (
+            <span className="chat-tab-badge">{annotations.length}</span>
+          )}
+        </button>
+
+        {/* Clear button floated right, only visible in Chat tab */}
+        {tab === 'chat' && chatHistory.length > 0 && (
           <button className="chat-clear-btn" onClick={clearChat} title="Clear conversation">
             Clear
           </button>
         )}
       </div>
 
-      <div className="chat-messages" ref={scrollRef}>
-        {!hasFile && (
-          <p className="chat-placeholder">Open a chapter to start a conversation about it.</p>
-        )}
-        {hasFile && chatHistory.length === 0 && (
-          <p className="chat-placeholder">
-            Ask anything about the current chapter — passive voice, plot, character, style...
-          </p>
-        )}
-        {chatHistory.map((msg) => (
-          <ChatMessageItem key={msg.id} message={msg} />
-        ))}
-        {isAILoading && chatHistory[chatHistory.length - 1]?.content === '' && (
-          <div className="chat-typing">
-            <span />
-            <span />
-            <span />
+      {/* ── Panel content ── */}
+      {tab === 'feedback' ? (
+        <FeedbackPanel />
+      ) : (
+        <>
+          <div className="chat-messages" ref={scrollRef}>
+            {!hasFile && (
+              <p className="chat-placeholder">Open a chapter to start a conversation about it.</p>
+            )}
+            {hasFile && chatHistory.length === 0 && (
+              <p className="chat-placeholder">
+                Ask anything about the current chapter — passive voice, plot, character, style...
+              </p>
+            )}
+            {chatHistory.map((msg) => (
+              <ChatMessageItem key={msg.id} message={msg} />
+            ))}
+            {isAILoading && chatHistory[chatHistory.length - 1]?.content === '' && (
+              <div className="chat-typing">
+                <span />
+                <span />
+                <span />
+              </div>
+            )}
+            {aiError && (
+              <div className="chat-error">{aiError}</div>
+            )}
           </div>
-        )}
-        {aiError && (
-          <div className="chat-error">{aiError}</div>
-        )}
-      </div>
 
-      <ChatInput onSend={sendMessage} disabled={!hasFile || isAILoading} />
+          <ChatInput onSend={sendMessage} disabled={!hasFile || isAILoading} />
+        </>
+      )}
     </div>
   )
 }

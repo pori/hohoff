@@ -25,11 +25,11 @@ const rawAnnotationsField = StateField.define<TextAnnotation[]>({
 })
 
 // Per-session cache: annotation id → { text, suggestion extracted from blockquote }
-const tooltipAnalysisCache = new Map<string, { text: string; suggestion: string | null }>()
+export const tooltipAnalysisCache = new Map<string, { text: string; suggestion: string | null }>()
 
 // Extract the first blockquote from a markdown string — used as the applicable rewrite
-function extractBlockquote(markdown: string): string | null {
-  const lines = markdown.split('\n')
+function extractBlockquote(md: string): string | null {
+  const lines = md.split('\n')
   const bqLines: string[] = []
   for (const line of lines) {
     if (line.startsWith('> ')) bqLines.push(line.slice(2))
@@ -39,12 +39,101 @@ function extractBlockquote(markdown: string): string | null {
   return text || null
 }
 
+// Shared analysis function — used by both the hover tooltip and FeedbackPanel.
+// Returns a cancel function; call it to stop receiving onUpdate callbacks.
+export function analyseAnnotation(
+  ann: TextAnnotation,
+  onUpdate: (text: string, streaming: boolean, suggestion: string | null) => void
+): () => void {
+  const cached = tooltipAnalysisCache.get(ann.id)
+  if (cached) {
+    onUpdate(cached.text, false, cached.suggestion)
+    return () => {}
+  }
+
+  let cancelled = false
+  const { activeFilePath, activeFileContent } = useEditorStore.getState()
+  const typeName = ann.type.replace(/_/g, ' ')
+  let accumulated = ''
+
+  const api = (window as unknown as { api?: { streamAIMessage: (p: unknown, cb: (c: string) => void) => Promise<void> } }).api
+  if (api?.streamAIMessage) {
+    api.streamAIMessage(
+      {
+        mode: 'chat',
+        documentContent: activeFileContent,
+        documentPath: activeFilePath ?? '',
+        conversationHistory: [],
+        userMessage: `This passage was flagged for ${typeName}: "${ann.matchedText}"\n\nIn 1–2 sentences explain the specific issue, then provide a direct rewrite in a markdown blockquote like this:\n\n> Rewritten passage here.\n\nBe specific to this exact text—no generic advice.`
+      },
+      (chunk: string) => {
+        if (cancelled) return
+        accumulated += chunk
+        onUpdate(accumulated, true, null)
+      }
+    ).then(() => {
+      if (cancelled) return
+      const text = accumulated || ann.message
+      const suggestion = extractBlockquote(text) ?? ann.suggestion ?? null
+      tooltipAnalysisCache.set(ann.id, { text, suggestion })
+      onUpdate(text, false, suggestion)
+    }).catch(() => {
+      if (!cancelled) onUpdate(ann.message, false, ann.suggestion ?? null)
+    })
+  } else {
+    const suggestion = ann.suggestion ?? null
+    tooltipAnalysisCache.set(ann.id, { text: ann.message, suggestion })
+    onUpdate(ann.message, false, suggestion)
+  }
+
+  return () => { cancelled = true }
+}
+
+// Exported module-level reference so FeedbackPanel can access the live EditorView
+// without prop-drilling. Set in the mount effect, nulled on cleanup.
+export let currentEditorView: EditorView | null = null
+
+// Scroll the editor to an annotation and place the cursor there
+export function scrollToAnnotation(ann: TextAnnotation): void {
+  const view = currentEditorView
+  if (!view) return
+  view.dispatch({
+    selection: { anchor: ann.from },
+    effects: EditorView.scrollIntoView(ann.from, { y: 'center' })
+  })
+}
+
+// Apply a suggestion to the document and remove that annotation
+export function applyAnnotation(ann: TextAnnotation, suggestion: string): void {
+  const view = currentEditorView
+  if (!view) return
+  const { annotations: anns, setAnnotations } = useEditorStore.getState()
+  const changeSpec = { from: ann.from, to: ann.to, insert: suggestion }
+  // Map surviving annotation positions through the text change so
+  // their from/to reflect the new document offsets.
+  const changeSet = view.state.changes(changeSpec)
+  const remaining = anns
+    .filter(a => a.id !== ann.id)
+    .map(a => ({ ...a, from: changeSet.mapPos(a.from), to: changeSet.mapPos(a.to) }))
+  // Combine text replacement + annotation update in one transaction
+  // so CM history treats them as a single undoable unit.
+  view.dispatch({
+    changes: changeSpec,
+    effects: setAnnotationsEffect.of(remaining)
+  })
+  setAnnotations(remaining)
+  tooltipAnalysisCache.delete(ann.id)
+}
+
 // Hover tooltip — lazily streams a specific AI analysis for the hovered passage
 const annotationHoverTooltip = hoverTooltip(
   (view, pos) => {
     const annotations = view.state.field(rawAnnotationsField)
-    const ann = annotations.find(a => pos >= a.from && pos <= a.to)
-    if (!ann) return null
+    const found = annotations.find(a => pos >= a.from && pos <= a.to)
+    if (!found) return null
+    // Capture in a new const so TypeScript preserves the non-undefined type
+    // across the nested create() closure without requiring non-null assertions.
+    const ann: TextAnnotation = found
 
     return {
       pos,
@@ -66,8 +155,6 @@ const annotationHoverTooltip = hoverTooltip(
         body.className = 'annotation-tooltip-body'
         dom.appendChild(body)
 
-        let destroyed = false
-
         function showText(text: string, streaming = false): void {
           body.classList.remove('annotation-tooltip-loading')
           const raw = marked.parse(streaming ? text + ' ▋' : text) as string
@@ -83,74 +170,22 @@ const annotationHoverTooltip = hoverTooltip(
           btn.className = 'annotation-tooltip-apply'
           btn.textContent = 'Apply suggestion'
           btn.addEventListener('click', () => {
-            const { annotations: anns, setAnnotations } = useEditorStore.getState()
-            const changeSpec = { from: ann.from, to: ann.to, insert: suggestion }
-            // Map surviving annotation positions through the text change so
-            // their from/to reflect the new document offsets.
-            const changeSet = view.state.changes(changeSpec)
-            const remaining = anns
-              .filter(a => a.id !== ann.id)
-              .map(a => ({ ...a, from: changeSet.mapPos(a.from), to: changeSet.mapPos(a.to) }))
-            // Combine text replacement + annotation update in one transaction
-            // so CM history treats them as a single undoable unit (Cmd+Z
-            // restores both the original text and the highlight together).
-            view.dispatch({
-              changes: changeSpec,
-              effects: setAnnotationsEffect.of(remaining)
-            })
-            setAnnotations(remaining)
-            tooltipAnalysisCache.delete(ann.id)
+            applyAnnotation(ann, suggestion)
           })
           dom.appendChild(btn)
         }
 
-        const cached = tooltipAnalysisCache.get(ann.id)
-        if (cached) {
-          showText(cached.text)
-          if (cached.suggestion) showApplyButton(cached.suggestion)
-        } else {
-          body.classList.add('annotation-tooltip-loading')
-          body.innerHTML = 'Analysing…'
+        body.classList.add('annotation-tooltip-loading')
+        body.innerHTML = 'Analysing…'
 
-          const { activeFilePath, activeFileContent } = useEditorStore.getState()
-          const typeName = ann.type.replace(/_/g, ' ')
-          let accumulated = ''
-
-          const api = (window as unknown as { api?: { streamAIMessage: (p: unknown, cb: (c: string) => void) => Promise<void> } }).api
-          if (api?.streamAIMessage) {
-            api.streamAIMessage(
-              {
-                mode: 'chat',
-                documentContent: activeFileContent,
-                documentPath: activeFilePath ?? '',
-                conversationHistory: [],
-                userMessage: `This passage was flagged for ${typeName}: "${ann.matchedText}"\n\nIn 1–2 sentences explain the specific issue, then provide a direct rewrite in a markdown blockquote like this:\n\n> Rewritten passage here.\n\nBe specific to this exact text—no generic advice.`
-              },
-              (chunk: string) => {
-                if (destroyed) return
-                accumulated += chunk
-                showText(accumulated, true)
-              }
-            ).then(() => {
-              if (destroyed) return
-              const text = accumulated || ann.message
-              const suggestion = extractBlockquote(text) ?? ann.suggestion ?? null
-              tooltipAnalysisCache.set(ann.id, { text, suggestion })
-              showText(text)
-              if (suggestion) showApplyButton(suggestion)
-            }).catch(() => {
-              if (!destroyed) showText(ann.message)
-            })
-          } else {
-            // Fallback: use stored message and suggestion
-            const suggestion = ann.suggestion ?? null
-            tooltipAnalysisCache.set(ann.id, { text: ann.message, suggestion })
-            showText(ann.message)
-            if (suggestion) showApplyButton(suggestion)
+        const cancelAnalysis = analyseAnnotation(ann, (text, streaming, suggestion) => {
+          showText(text, streaming)
+          if (!streaming && suggestion && !dom.querySelector('.annotation-tooltip-apply')) {
+            showApplyButton(suggestion)
           }
-        }
+        })
 
-        return { dom, destroy() { destroyed = true } }
+        return { dom, destroy() { cancelAnalysis() } }
       }
     }
   },
@@ -315,6 +350,8 @@ export function MarkdownEditor(): JSX.Element {
     })
 
     viewRef.current = view
+    currentEditorView = view
+
     // Expose view + undo for dev-mode testing (stripped in production)
     if (import.meta.env.DEV) {
       const w = window as unknown as Record<string, unknown>
@@ -328,6 +365,7 @@ export function MarkdownEditor(): JSX.Element {
     return () => {
       view.destroy()
       viewRef.current = null
+      currentEditorView = null
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 

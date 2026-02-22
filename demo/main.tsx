@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { useEditorStore } from '@renderer/store/editorStore'
 import { MarkdownEditor } from '@renderer/components/Editor/MarkdownEditor'
+import { ChatPanel } from '@renderer/components/AIChat/ChatPanel'
 import '@renderer/styles/global.css'
 
 // Mock window.api so the renderer doesn't crash in a plain browser context
@@ -61,8 +62,21 @@ store.setAnnotations([
   }
 ])
 
+function DemoApp(): JSX.Element {
+  return (
+    <div style={{ display: 'flex', height: '100%', background: 'var(--bg)' }}>
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+        <MarkdownEditor />
+      </div>
+      <div style={{ width: '300px', flexShrink: 0 }}>
+        <ChatPanel />
+      </div>
+    </div>
+  )
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <MarkdownEditor />
+    <DemoApp />
   </StrictMode>
 )

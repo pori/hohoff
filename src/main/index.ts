@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell } from 'electron'
+import { app, BrowserWindow, shell, nativeImage } from 'electron'
 import { join, resolve } from 'path'
 import { config } from 'dotenv'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
@@ -9,6 +9,9 @@ config({ path: resolve(process.cwd(), '.env') })
 config({ path: resolve(process.cwd(), '.env.local'), override: true })
 
 function createWindow(): void {
+  const icon = nativeImage.createFromPath(
+    join(__dirname, '../../resources/icon.png')
+  )
   const mainWindow = new BrowserWindow({
     width: 1440,
     height: 900,
@@ -16,6 +19,7 @@ function createWindow(): void {
     minHeight: 600,
     title: 'Hohoff Editor',
     titleBarStyle: 'hiddenInset',
+    icon,
     show: false,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -44,6 +48,13 @@ function createWindow(): void {
 
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.hohoff.editor')
+
+  if (process.platform === 'darwin') {
+    const dockIcon = nativeImage.createFromPath(
+      join(__dirname, '../../resources/icon.png')
+    )
+    app.dock.setIcon(dockIcon)
+  }
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)

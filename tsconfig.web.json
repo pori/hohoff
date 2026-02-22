@@ -6,6 +6,7 @@
     "baseUrl": ".",
     "paths": {
       "@renderer/*": ["src/renderer/*"]
-    }
+    },
+    "types": ["vite/client"]
   }
 }
