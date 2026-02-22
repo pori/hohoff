@@ -52,7 +52,8 @@ export function AnalysisToolbar(): JSX.Element {
   const runPassiveVoice = (): void => {
     if (!hasFile) return
     const found = detectPassiveVoice(activeFileContent)
-    setAnnotations(found)
+    const existing = useEditorStore.getState().annotations.filter((a) => a.type !== 'passive_voice')
+    setAnnotations([...existing, ...found])
     setAnalysisMode('passive_voice')
   }
 
@@ -94,7 +95,10 @@ export function AnalysisToolbar(): JSX.Element {
       const lastMsg = currentHistory[currentHistory.length - 1]
       if (lastMsg?.role === 'assistant' && lastMsg.content.length > 0) {
         const newAnnotations = parseAnnotationsFromAIResponse(lastMsg.content, activeFileContent)
-        if (newAnnotations.length > 0) setAnnotations(newAnnotations)
+        if (newAnnotations.length > 0) {
+          const existing = useEditorStore.getState().annotations.filter((a) => a.type !== mode)
+          setAnnotations([...existing, ...newAnnotations])
+        }
       }
     } catch (err) {
       setAIError(err instanceof Error ? err.message : 'Analysis failed')
@@ -104,7 +108,9 @@ export function AnalysisToolbar(): JSX.Element {
   }
 
   const passiveCount = annotations.filter((a) => a.type === 'passive_voice').length
-  const otherCount = annotations.filter((a) => a.type !== 'passive_voice').length
+  const consistencyCount = annotations.filter((a) => a.type === 'consistency').length
+  const styleCount = annotations.filter((a) => a.type === 'style').length
+  const critiqueCount = annotations.filter((a) => a.type === 'critique').length
   const docWordCount = countWords(activeFileContent)
 
   return (
@@ -117,7 +123,7 @@ export function AnalysisToolbar(): JSX.Element {
           title="Highlight passive voice sentences instantly (no AI required)"
         >
           Passive Voice
-          {analysisMode === 'passive_voice' && passiveCount > 0 && (
+          {passiveCount > 0 && (
             <span className="toolbar-badge">{passiveCount}</span>
           )}
         </button>
@@ -129,8 +135,8 @@ export function AnalysisToolbar(): JSX.Element {
           title="Check character names, timeline, and repeated phrases via AI"
         >
           {isAILoading && analysisMode === 'consistency' ? 'Checking…' : 'Consistency'}
-          {analysisMode === 'consistency' && otherCount > 0 && (
-            <span className="toolbar-badge">{otherCount}</span>
+          {consistencyCount > 0 && (
+            <span className="toolbar-badge">{consistencyCount}</span>
           )}
         </button>
 
@@ -141,8 +147,8 @@ export function AnalysisToolbar(): JSX.Element {
           title="Pacing, sentence variety, show-don't-tell feedback via AI"
         >
           {isAILoading && analysisMode === 'style' ? 'Analyzing…' : 'Style'}
-          {analysisMode === 'style' && otherCount > 0 && (
-            <span className="toolbar-badge">{otherCount}</span>
+          {styleCount > 0 && (
+            <span className="toolbar-badge">{styleCount}</span>
           )}
         </button>
 
@@ -153,8 +159,8 @@ export function AnalysisToolbar(): JSX.Element {
           title="Honest overall critique of this chapter via AI"
         >
           {isAILoading && analysisMode === 'critique' ? 'Reading…' : 'Critique'}
-          {analysisMode === 'critique' && otherCount > 0 && (
-            <span className="toolbar-badge">{otherCount}</span>
+          {critiqueCount > 0 && (
+            <span className="toolbar-badge">{critiqueCount}</span>
           )}
         </button>
 
