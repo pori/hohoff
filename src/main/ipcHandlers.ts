@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron'
-import { listDraftFiles, readMarkdownFile, writeMarkdownFile, getProjectWordCount, saveOrderFile } from './fileSystem'
+import { listDraftFiles, readMarkdownFile, writeMarkdownFile, getProjectWordCount, saveOrderFile, readSession, writeSession } from './fileSystem'
 import { streamMessage } from './aiService'
 import type { AIPayload } from '../renderer/types/editor'
 
@@ -22,6 +22,14 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('fs:saveOrder', async (_event, order: Record<string, string[]>) => {
     await saveOrderFile(order)
+  })
+
+  ipcMain.handle('session:read', async () => {
+    return await readSession()
+  })
+
+  ipcMain.handle('session:write', async (_event, data: Record<string, unknown>) => {
+    await writeSession(data)
   })
 
   ipcMain.handle('ai:streamMessage', async (event, payload: AIPayload) => {

@@ -1,6 +1,11 @@
 import { create } from 'zustand'
 import type { FileNode, ChatMessage, TextAnnotation, AnalysisMode } from '../types/editor'
 
+interface AnnotationFileState {
+  mode: AnalysisMode
+  annotations: TextAnnotation[]
+}
+
 interface EditorState {
   // File tree
   fileTree: FileNode[]
@@ -26,14 +31,19 @@ interface EditorState {
   setAIError: (error: string | null) => void
   clearChat: () => void
 
-  // Annotations (highlights in editor)
+  // Annotations (highlights in editor) — also persisted per file
   annotations: TextAnnotation[]
+  annotationsByFile: Record<string, AnnotationFileState>
   setAnnotations: (annotations: TextAnnotation[]) => void
   clearAnnotations: () => void
 
   // Analysis mode
   analysisMode: AnalysisMode
   setAnalysisMode: (mode: AnalysisMode) => void
+
+  // Scroll positions per file
+  scrollPositions: Record<string, number>
+  setScrollPosition: (filePath: string, scrollTop: number) => void
 
   // File tree reordering
   moveNode: (dirPath: string, fromIdx: number, toIdx: number) => void
@@ -49,6 +59,19 @@ interface EditorState {
   // Theme
   theme: 'dark' | 'light'
   toggleTheme: () => void
+
+  // Session persistence
+  loadSession: () => Promise<void>
+}
+
+// Debounced session writer — coalesces rapid changes into one write
+let _sessionTimer: ReturnType<typeof setTimeout> | null = null
+function scheduleSave(getData: () => Record<string, unknown>): void {
+  if (_sessionTimer) clearTimeout(_sessionTimer)
+  _sessionTimer = setTimeout(() => {
+    const api = (window as unknown as { api?: { writeSession: (d: Record<string, unknown>) => Promise<void> } }).api
+    api?.writeSession(getData()).catch(console.error)
+  }, 1500)
 }
 
 export const useEditorStore = create<EditorState>((set, get) => ({
@@ -90,14 +113,25 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   activeFileContent: '',
   isDirty: false,
   setActiveFile: (path, content) => {
-    const existing = get().chatHistoryByFile[path] ?? []
+    const s = get()
+    const existing = s.chatHistoryByFile[path] ?? []
+    const savedAnnotationState = s.annotationsByFile[path]
     set({
       activeFilePath: path,
       activeFileContent: content,
       isDirty: false,
       chatHistory: existing,
-      annotations: [],
-      analysisMode: 'none'
+      annotations: savedAnnotationState?.annotations ?? [],
+      analysisMode: savedAnnotationState?.mode ?? 'none'
+    })
+    scheduleSave(() => {
+      const st = get()
+      return {
+        activeFilePath: st.activeFilePath,
+        scrollPositions: st.scrollPositions,
+        chatHistoryByFile: st.chatHistoryByFile,
+        annotationsByFile: st.annotationsByFile
+      }
     })
   },
   setContent: (content) => set({ activeFileContent: content, isDirty: true }),
@@ -116,6 +150,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         ? { ...s.chatHistoryByFile, [s.activeFilePath]: history }
         : s.chatHistoryByFile
       return { chatHistory: history, chatHistoryByFile: byFile }
+    })
+    scheduleSave(() => {
+      const st = get()
+      return {
+        activeFilePath: st.activeFilePath,
+        scrollPositions: st.scrollPositions,
+        chatHistoryByFile: st.chatHistoryByFile,
+        annotationsByFile: st.annotationsByFile
+      }
     })
   },
 
@@ -144,7 +187,21 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     })
   },
 
-  setAILoading: (isAILoading) => set({ isAILoading }),
+  setAILoading: (isAILoading) => {
+    set({ isAILoading })
+    // When AI finishes, persist the completed chat history
+    if (!isAILoading) {
+      scheduleSave(() => {
+        const st = get()
+        return {
+          activeFilePath: st.activeFilePath,
+          scrollPositions: st.scrollPositions,
+          chatHistoryByFile: st.chatHistoryByFile,
+          annotationsByFile: st.annotationsByFile
+        }
+      })
+    }
+  },
   setAIError: (aiError) => set({ aiError }),
 
   clearChat: () => {
@@ -154,14 +211,77 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         : s.chatHistoryByFile
       return { chatHistory: [], chatHistoryByFile: byFile }
     })
+    scheduleSave(() => {
+      const st = get()
+      return {
+        activeFilePath: st.activeFilePath,
+        scrollPositions: st.scrollPositions,
+        chatHistoryByFile: st.chatHistoryByFile,
+        annotationsByFile: st.annotationsByFile
+      }
+    })
   },
 
   annotations: [],
-  setAnnotations: (annotations) => set({ annotations }),
-  clearAnnotations: () => set({ annotations: [], analysisMode: 'none' }),
+  annotationsByFile: {},
+  setAnnotations: (annotations) => {
+    set((s) => {
+      const annotationsByFile = s.activeFilePath
+        ? { ...s.annotationsByFile, [s.activeFilePath]: { mode: s.analysisMode, annotations } }
+        : s.annotationsByFile
+      return { annotations, annotationsByFile }
+    })
+    scheduleSave(() => {
+      const st = get()
+      return {
+        activeFilePath: st.activeFilePath,
+        scrollPositions: st.scrollPositions,
+        chatHistoryByFile: st.chatHistoryByFile,
+        annotationsByFile: st.annotationsByFile
+      }
+    })
+  },
+  clearAnnotations: () => {
+    set((s) => {
+      const annotationsByFile = s.activeFilePath
+        ? { ...s.annotationsByFile, [s.activeFilePath]: { mode: 'none' as AnalysisMode, annotations: [] } }
+        : s.annotationsByFile
+      return { annotations: [], analysisMode: 'none', annotationsByFile }
+    })
+    scheduleSave(() => {
+      const st = get()
+      return {
+        activeFilePath: st.activeFilePath,
+        scrollPositions: st.scrollPositions,
+        chatHistoryByFile: st.chatHistoryByFile,
+        annotationsByFile: st.annotationsByFile
+      }
+    })
+  },
 
   analysisMode: 'none',
-  setAnalysisMode: (analysisMode) => set({ analysisMode }),
+  setAnalysisMode: (analysisMode) => {
+    set((s) => {
+      const annotationsByFile = s.activeFilePath
+        ? { ...s.annotationsByFile, [s.activeFilePath]: { mode: analysisMode, annotations: s.annotations } }
+        : s.annotationsByFile
+      return { analysisMode, annotationsByFile }
+    })
+  },
+
+  scrollPositions: {},
+  setScrollPosition: (filePath, scrollTop) => {
+    set((s) => ({ scrollPositions: { ...s.scrollPositions, [filePath]: scrollTop } }))
+    scheduleSave(() => {
+      const st = get()
+      return {
+        activeFilePath: st.activeFilePath,
+        scrollPositions: st.scrollPositions,
+        chatHistoryByFile: st.chatHistoryByFile,
+        annotationsByFile: st.annotationsByFile
+      }
+    })
+  },
 
   projectWordCount: 0,
   setProjectWordCount: (projectWordCount) => set({ projectWordCount }),
@@ -181,5 +301,38 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       document.documentElement.classList.toggle('light', next === 'light')
       return { theme: next }
     })
+  },
+
+  loadSession: async () => {
+    const api = (window as unknown as { api?: { readSession: () => Promise<Record<string, unknown>>; readFile: (p: string) => Promise<string> } }).api
+    if (!api) return
+    try {
+      const data = await api.readSession()
+      const patch: Partial<EditorState> = {}
+
+      if (data.scrollPositions && typeof data.scrollPositions === 'object') {
+        patch.scrollPositions = data.scrollPositions as Record<string, number>
+      }
+      if (data.chatHistoryByFile && typeof data.chatHistoryByFile === 'object') {
+        patch.chatHistoryByFile = data.chatHistoryByFile as Record<string, ChatMessage[]>
+      }
+      if (data.annotationsByFile && typeof data.annotationsByFile === 'object') {
+        patch.annotationsByFile = data.annotationsByFile as Record<string, AnnotationFileState>
+      }
+
+      set(patch)
+
+      // Restore active file last so setActiveFile can read the patched annotationsByFile
+      if (typeof data.activeFilePath === 'string') {
+        try {
+          const content = await api.readFile(data.activeFilePath)
+          get().setActiveFile(data.activeFilePath, content)
+        } catch {
+          // File may have been moved/deleted — open nothing
+        }
+      }
+    } catch {
+      // No session yet — start fresh
+    }
   }
 }))

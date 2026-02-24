@@ -6,6 +6,7 @@ const DRAFT_ROOT =
   process.env.DRAFT_PATH ?? '/Users/pori/WebstormProjects/hohoff/draft'
 
 const ORDER_FILE = join(DRAFT_ROOT, '.order.json')
+const SESSION_FILE = join(DRAFT_ROOT, '.session.json')
 
 const PART_ORDER = ['Prologue', 'Content Warning', 'Part I', 'Part II', 'Part III', 'Part IV', 'Epilogue', 'The first time']
 
@@ -28,6 +29,18 @@ async function readOrderFile(): Promise<Record<string, string[]>> {
 
 export async function saveOrderFile(order: Record<string, string[]>): Promise<void> {
   await writeFile(ORDER_FILE, JSON.stringify(order, null, 2), 'utf-8')
+}
+
+export async function readSession(): Promise<Record<string, unknown>> {
+  try {
+    return JSON.parse(await readFile(SESSION_FILE, 'utf-8'))
+  } catch {
+    return {}
+  }
+}
+
+export async function writeSession(data: Record<string, unknown>): Promise<void> {
+  await writeFile(SESSION_FILE, JSON.stringify(data), 'utf-8')
 }
 
 function applyOrder(nodes: FileNode[], savedNames: string[]): FileNode[] {

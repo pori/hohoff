@@ -48,5 +48,11 @@ contextBridge.exposeInMainWorld('api', {
   getProjectWordCount: (): Promise<number> => ipcRenderer.invoke('fs:projectWordCount'),
 
   saveOrder: (order: Record<string, string[]>): Promise<void> =>
-    ipcRenderer.invoke('fs:saveOrder', order)
+    ipcRenderer.invoke('fs:saveOrder', order),
+
+  readSession: (): Promise<Record<string, unknown>> =>
+    ipcRenderer.invoke('session:read'),
+
+  writeSession: (data: Record<string, unknown>): Promise<void> =>
+    ipcRenderer.invoke('session:write', data)
 })

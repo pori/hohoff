@@ -7,15 +7,20 @@ import { useEditorStore } from './store/editorStore'
 import './styles/app.css'
 
 export default function App(): JSX.Element {
-  const { setFileTree, activeFilePath, isDirty, markSaved, activeFileContent, theme, toggleTheme } =
+  const { setFileTree, activeFilePath, isDirty, markSaved, activeFileContent, theme, toggleTheme, loadSession } =
     useEditorStore()
-  const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [chatOpen, setChatOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(
+    () => localStorage.getItem('sidebarOpen') !== 'false'
+  )
+  const [chatOpen, setChatOpen] = useState(
+    () => localStorage.getItem('chatOpen') !== 'false'
+  )
 
-  // Load file tree on mount and apply persisted theme
+  // Load file tree, apply persisted theme, and restore last session
   useEffect(() => {
     window.api.listFiles().then(setFileTree)
     document.documentElement.classList.toggle('light', theme === 'light')
+    loadSession()
   }, [])
 
   // Handle Cmd+S / Ctrl+S
@@ -45,13 +50,13 @@ export default function App(): JSX.Element {
           <div className="app-layout-toggle">
             <button
               className={`app-layout-toggle-seg${sidebarOpen ? ' active' : ''}`}
-              onClick={() => setSidebarOpen((v) => !v)}
+              onClick={() => setSidebarOpen((v) => { const next = !v; localStorage.setItem('sidebarOpen', String(next)); return next })}
               title={sidebarOpen ? 'Hide file tree' : 'Show file tree'}
             />
             <div className="app-layout-toggle-seg app-layout-toggle-seg--mid" />
             <button
               className={`app-layout-toggle-seg${chatOpen ? ' active' : ''}`}
-              onClick={() => setChatOpen((v) => !v)}
+              onClick={() => setChatOpen((v) => { const next = !v; localStorage.setItem('chatOpen', String(next)); return next })}
               title={chatOpen ? 'Hide AI chat' : 'Show AI chat'}
             />
           </div>

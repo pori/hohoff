@@ -306,7 +306,7 @@ function buildTheme(fontSize: number, dark: boolean): ReturnType<typeof EditorVi
 export function MarkdownEditor(): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
-  const { activeFilePath, activeFileContent, setContent, annotations, fontSize, theme } = useEditorStore()
+  const { activeFilePath, activeFileContent, setContent, annotations, fontSize, theme, scrollPositions } = useEditorStore()
 
   // Initialize CodeMirror once
   useEffect(() => {
@@ -352,6 +352,17 @@ export function MarkdownEditor(): JSX.Element {
     viewRef.current = view
     currentEditorView = view
 
+    // Track scroll position — debounced so we don't thrash IPC on every pixel
+    let scrollTimer: ReturnType<typeof setTimeout> | null = null
+    const onScroll = (): void => {
+      if (scrollTimer) clearTimeout(scrollTimer)
+      scrollTimer = setTimeout(() => {
+        const { activeFilePath: fp, setScrollPosition: save } = useEditorStore.getState()
+        if (fp) save(fp, view.scrollDOM.scrollTop)
+      }, 300)
+    }
+    view.scrollDOM.addEventListener('scroll', onScroll, { passive: true })
+
     // Expose view + undo for dev-mode testing (stripped in production)
     if (import.meta.env.DEV) {
       const w = window as unknown as Record<string, unknown>
@@ -363,13 +374,15 @@ export function MarkdownEditor(): JSX.Element {
       })
     }
     return () => {
+      view.scrollDOM.removeEventListener('scroll', onScroll)
+      if (scrollTimer) clearTimeout(scrollTimer)
       view.destroy()
       viewRef.current = null
       currentEditorView = null
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // When the active file changes, replace editor content
+  // When the active file changes, replace editor content and restore scroll
   useEffect(() => {
     const view = viewRef.current
     if (!view) return
@@ -381,9 +394,13 @@ export function MarkdownEditor(): JSX.Element {
         changes: { from: 0, to: current.length, insert: activeFileContent },
         annotations: Transaction.addToHistory.of(false)
       })
-      // Scroll to top on file switch
       view.dispatch({ selection: { anchor: 0 } })
-      view.scrollDOM.scrollTop = 0
+      // Restore saved scroll position, or go to top for new files
+      const savedScroll = activeFilePath ? scrollPositions[activeFilePath] ?? 0 : 0
+      // Defer scroll restoration so CodeMirror finishes laying out the new content
+      requestAnimationFrame(() => {
+        view.scrollDOM.scrollTop = savedScroll
+      })
     }
   }, [activeFilePath]) // Only sync on file switch
 
