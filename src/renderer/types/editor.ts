@@ -34,3 +34,9 @@ export interface AIPayload {
   conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>
   userMessage: string
 }
+
+export interface RevisionMeta {
+  id: string
+  timestamp: number
+  wordCount: number
+}

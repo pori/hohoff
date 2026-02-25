@@ -1,9 +1,10 @@
-import { StrictMode } from 'react'
+import { StrictMode, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { useEditorStore } from '@renderer/store/editorStore'
 import { MarkdownEditor } from '@renderer/components/Editor/MarkdownEditor'
 import { ChatPanel } from '@renderer/components/AIChat/ChatPanel'
 import '@renderer/styles/global.css'
+import '@renderer/styles/app.css'
 
 // Mock window.api so the renderer doesn't crash in a plain browser context
 ;(window as unknown as Record<string, unknown>).api = {
@@ -13,7 +14,11 @@ import '@renderer/styles/global.css'
   streamAIMessage: () => Promise.resolve(),
   removeAIListener: () => {},
   getProjectWordCount: () => Promise.resolve(0),
-  saveOrder: () => Promise.resolve()
+  saveOrder: () => Promise.resolve(),
+  saveRevision: () => Promise.resolve(),
+  listRevisions: () => Promise.resolve([]),
+  loadRevision: () => Promise.resolve(''),
+  deleteRevision: () => Promise.resolve()
 }
 
 const DEMO_TEXT =
@@ -63,13 +68,36 @@ store.setAnnotations([
 ])
 
 function DemoApp(): JSX.Element {
+  const [revActive, setRevActive] = useState(false)
   return (
-    <div style={{ display: 'flex', height: '100%', background: 'var(--bg)' }}>
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-        <MarkdownEditor />
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg-base)' }}>
+      {/* Titlebar – same markup as App.tsx */}
+      <div className="app-titlebar">
+        <span className="app-titlebar-title">Hohoff Editor</span>
+        <div className="app-titlebar-right">
+          <div className="app-layout-toggle">
+            <button className="app-layout-toggle-seg active" />
+            <div className="app-layout-toggle-seg app-layout-toggle-seg--mid" />
+            <button className="app-layout-toggle-seg active" />
+          </div>
+          <div className="app-titlebar-icon-group">
+            <button
+              className={`app-titlebar-theme-btn app-titlebar-revision-btn${revActive ? ' active' : ''}`}
+              onClick={() => setRevActive(v => !v)}
+              title="Revision history"
+            >⟳</button>
+            <button className="app-titlebar-theme-btn" title="Toggle theme">☀</button>
+          </div>
+        </div>
       </div>
-      <div style={{ width: '300px', flexShrink: 0 }}>
-        <ChatPanel />
+      {/* Editor content below */}
+      <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+          <MarkdownEditor />
+        </div>
+        <div style={{ width: '300px', flexShrink: 0 }}>
+          <ChatPanel />
+        </div>
       </div>
     </div>
   )

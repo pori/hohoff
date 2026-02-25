@@ -1,12 +1,15 @@
-import { readdir, readFile, writeFile } from 'fs/promises'
+import { readdir, readFile, writeFile, mkdir, unlink } from 'fs/promises'
 import { join } from 'path'
-import type { FileNode } from '../renderer/types/editor'
+import type { FileNode, RevisionMeta } from '../renderer/types/editor'
 
 const DRAFT_ROOT =
   process.env.DRAFT_PATH ?? '/Users/pori/WebstormProjects/hohoff/draft'
 
 const ORDER_FILE = join(DRAFT_ROOT, '.order.json')
 const SESSION_FILE = join(DRAFT_ROOT, '.session.json')
+const REVISIONS_DIR = join(DRAFT_ROOT, '.revisions')
+
+const MAX_REVISIONS = 50
 
 const PART_ORDER = ['Prologue', 'Content Warning', 'Part I', 'Part II', 'Part III', 'Part IV', 'Epilogue', 'The first time']
 
@@ -143,4 +146,72 @@ export async function getProjectWordCount(): Promise<number> {
     total += countWords(content)
   }
   return total
+}
+
+// ─── Revision system ─────────────────────────────────────────────────────────
+
+function revisionSlug(filePath: string): string {
+  const prefix = DRAFT_ROOT + '/'
+  const rel = filePath.startsWith(prefix) ? filePath.slice(prefix.length) : filePath
+  return rel.replace(/\.md$/, '').replace(/\//g, '__')
+}
+
+function shortId(): string {
+  return Math.random().toString(36).slice(2, 7)
+}
+
+export async function saveRevision(filePath: string, content: string): Promise<void> {
+  assertInDraftRoot(filePath)
+  const slug = revisionSlug(filePath)
+  const dir = join(REVISIONS_DIR, slug)
+  await mkdir(dir, { recursive: true })
+  const timestamp = Date.now()
+  const id = `${timestamp}_${shortId()}`
+  const revision = { id, timestamp, wordCount: countWords(content), content }
+  await writeFile(join(dir, `${id}.json`), JSON.stringify(revision), 'utf-8')
+  // Prune oldest revisions beyond the limit
+  const entries = (await readdir(dir)).filter((e) => e.endsWith('.json')).sort()
+  if (entries.length > MAX_REVISIONS) {
+    await Promise.all(
+      entries.slice(0, entries.length - MAX_REVISIONS).map((f) => unlink(join(dir, f)))
+    )
+  }
+}
+
+export async function listRevisions(filePath: string): Promise<RevisionMeta[]> {
+  assertInDraftRoot(filePath)
+  const slug = revisionSlug(filePath)
+  const dir = join(REVISIONS_DIR, slug)
+  try {
+    const entries = (await readdir(dir)).filter((e) => e.endsWith('.json')).sort().reverse()
+    return await Promise.all(
+      entries.map(async (f) => {
+        const raw = JSON.parse(await readFile(join(dir, f), 'utf-8')) as {
+          id: string
+          timestamp: number
+          wordCount: number
+        }
+        return { id: raw.id, timestamp: raw.timestamp, wordCount: raw.wordCount }
+      })
+    )
+  } catch {
+    return []
+  }
+}
+
+export async function loadRevision(filePath: string, revisionId: string): Promise<string> {
+  assertInDraftRoot(filePath)
+  if (!/^[\w-]+$/.test(revisionId)) throw new Error('Invalid revision ID')
+  const slug = revisionSlug(filePath)
+  const revPath = join(REVISIONS_DIR, slug, `${revisionId}.json`)
+  const raw = JSON.parse(await readFile(revPath, 'utf-8')) as { content: string }
+  return raw.content
+}
+
+export async function deleteRevision(filePath: string, revisionId: string): Promise<void> {
+  assertInDraftRoot(filePath)
+  if (!/^[\w-]+$/.test(revisionId)) throw new Error('Invalid revision ID')
+  const slug = revisionSlug(filePath)
+  const revPath = join(REVISIONS_DIR, slug, `${revisionId}.json`)
+  await unlink(revPath)
 }

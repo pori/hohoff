@@ -1,0 +1,190 @@
+/* ─── Revision panel — overlays the editor area ─────────────────────────── */
+.revision-panel {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: var(--editor-bg);
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--border);
+}
+
+/* ─── Header ─────────────────────────────────────────────────────────────── */
+.revision-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  height: 38px;
+  border-bottom: 1px solid var(--border);
+  background: var(--toolbar-bg);
+  flex-shrink: 0;
+}
+
+.revision-back-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  line-height: 1;
+  transition: color 0.15s;
+}
+
+.revision-back-btn:hover {
+  color: var(--text-primary);
+}
+
+.revision-panel-title {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* ─── Body (two-column layout) ───────────────────────────────────────────── */
+.revision-panel-body {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ─── Revision list (left column) ───────────────────────────────────────── */
+.revision-list {
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+.revision-empty {
+  padding: 20px 16px;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.6;
+  font-family: var(--font-sans);
+}
+
+.revision-entry {
+  position: relative;
+  padding: 10px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.12s;
+}
+
+.revision-entry:hover {
+  background: var(--hover-bg);
+}
+
+.revision-entry.selected {
+  background: var(--active-bg);
+}
+
+.revision-entry-date {
+  font-size: 11px;
+  font-family: var(--font-sans);
+  color: var(--text-secondary);
+  margin-bottom: 3px;
+}
+
+.revision-entry-words {
+  font-size: 10px;
+  font-family: var(--font-sans);
+  color: var(--text-muted);
+}
+
+.revision-entry-delete {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+  opacity: 0;
+  transition: opacity 0.12s, color 0.12s;
+}
+
+.revision-entry:hover .revision-entry-delete {
+  opacity: 1;
+}
+
+.revision-entry-delete:hover {
+  color: #c05050;
+}
+
+/* ─── Preview (right column) ─────────────────────────────────────────────── */
+.revision-preview {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.revision-preview-empty {
+  margin: auto;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  text-align: center;
+  padding: 40px;
+  line-height: 1.6;
+}
+
+.revision-preview-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 32px;
+  font-family: var(--font-serif);
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--text-primary);
+  opacity: 0.75;
+}
+
+.revision-preview-content h1,
+.revision-preview-content h2,
+.revision-preview-content h3 {
+  color: var(--heading-color);
+  font-weight: 700;
+  margin: 1em 0 0.4em;
+}
+
+.revision-preview-content p {
+  margin-bottom: 0.8em;
+}
+
+.revision-preview-content em { font-style: italic; }
+.revision-preview-content strong { font-weight: 700; }
+
+.revision-preview-footer {
+  flex-shrink: 0;
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+  background: var(--toolbar-bg);
+}
+
+.revision-restore-btn {
+  background: var(--accent);
+  color: var(--bg-base);
+  border: none;
+  border-radius: 5px;
+  padding: 7px 16px;
+  font-size: 12px;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.revision-restore-btn:hover {
+  background: var(--accent-hover);
+}

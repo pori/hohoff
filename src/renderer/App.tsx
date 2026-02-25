@@ -3,12 +3,15 @@ import { FileTree } from './components/FileTree/FileTree'
 import { MarkdownEditor } from './components/Editor/MarkdownEditor'
 import { ChatPanel } from './components/AIChat/ChatPanel'
 import { AnalysisToolbar } from './components/Toolbar/AnalysisToolbar'
+import { RevisionPanel } from './components/Revisions/RevisionPanel'
 import { useEditorStore } from './store/editorStore'
 import './styles/app.css'
 
 export default function App(): JSX.Element {
-  const { setFileTree, activeFilePath, isDirty, markSaved, activeFileContent, theme, toggleTheme, loadSession } =
-    useEditorStore()
+  const {
+    setFileTree, activeFilePath, isDirty, markSaved, activeFileContent, theme, toggleTheme,
+    loadSession, revisionPanelOpen, toggleRevisionPanel
+  } = useEditorStore()
   const [sidebarOpen, setSidebarOpen] = useState(
     () => localStorage.getItem('sidebarOpen') !== 'false'
   )
@@ -30,6 +33,7 @@ export default function App(): JSX.Element {
         e.preventDefault()
         if (activeFilePath && isDirty) {
           await window.api.writeFile(activeFilePath, activeFileContent)
+          await window.api.saveRevision(activeFilePath, activeFileContent)
           markSaved()
         }
       }
@@ -60,21 +64,31 @@ export default function App(): JSX.Element {
               title={chatOpen ? 'Hide AI chat' : 'Show AI chat'}
             />
           </div>
-          <button
-            className="app-titlebar-theme-btn"
-            onClick={toggleTheme}
-            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-          >
-            {theme === 'dark' ? '☀' : '☾'}
-          </button>
+          <div className="app-titlebar-icon-group">
+            <button
+              className={`app-titlebar-theme-btn app-titlebar-revision-btn${revisionPanelOpen ? ' active' : ''}`}
+              onClick={toggleRevisionPanel}
+              title="Revision history"
+            >
+              ⟳
+            </button>
+            <button
+              className="app-titlebar-theme-btn"
+              onClick={toggleTheme}
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {theme === 'dark' ? '☀' : '☾'}
+            </button>
+          </div>
         </div>
       </div>
       <aside className="sidebar">
         <FileTree />
       </aside>
-      <main className="editor-area">
+      <main className="editor-area" style={{ position: 'relative' }}>
         <AnalysisToolbar />
         <MarkdownEditor />
+        {revisionPanelOpen && <RevisionPanel />}
       </main>
       <aside className="chat-area">
         <ChatPanel />

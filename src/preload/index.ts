@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { FileNode, AIPayload } from '../renderer/types/editor'
+import type { FileNode, AIPayload, RevisionMeta } from '../renderer/types/editor'
 
 contextBridge.exposeInMainWorld('api', {
   listFiles: (): Promise<FileNode[]> => ipcRenderer.invoke('fs:listFiles'),
@@ -54,5 +54,17 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.invoke('session:read'),
 
   writeSession: (data: Record<string, unknown>): Promise<void> =>
-    ipcRenderer.invoke('session:write', data)
+    ipcRenderer.invoke('session:write', data),
+
+  saveRevision: (filePath: string, content: string): Promise<void> =>
+    ipcRenderer.invoke('revisions:save', filePath, content),
+
+  listRevisions: (filePath: string): Promise<RevisionMeta[]> =>
+    ipcRenderer.invoke('revisions:list', filePath),
+
+  loadRevision: (filePath: string, revisionId: string): Promise<string> =>
+    ipcRenderer.invoke('revisions:load', filePath, revisionId),
+
+  deleteRevision: (filePath: string, revisionId: string): Promise<void> =>
+    ipcRenderer.invoke('revisions:delete', filePath, revisionId)
 })

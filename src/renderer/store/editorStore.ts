@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { FileNode, ChatMessage, TextAnnotation, AnalysisMode } from '../types/editor'
+import type { FileNode, ChatMessage, TextAnnotation, AnalysisMode, RevisionMeta } from '../types/editor'
 
 interface AnnotationFileState {
   mode: AnalysisMode
@@ -59,6 +59,12 @@ interface EditorState {
   // Theme
   theme: 'dark' | 'light'
   toggleTheme: () => void
+
+  // Revision panel
+  revisionPanelOpen: boolean
+  toggleRevisionPanel: () => void
+  revisions: RevisionMeta[]
+  setRevisions: (revisions: RevisionMeta[]) => void
 
   // Session persistence
   loadSession: () => Promise<void>
@@ -285,6 +291,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   projectWordCount: 0,
   setProjectWordCount: (projectWordCount) => set({ projectWordCount }),
+
+  revisionPanelOpen: false,
+  toggleRevisionPanel: () => set((s) => ({ revisionPanelOpen: !s.revisionPanelOpen })),
+  revisions: [],
+  setRevisions: (revisions) => set({ revisions }),
 
   fontSize: Number(localStorage.getItem('editorFontSize')) || 15,
   setFontSize: (size) => {

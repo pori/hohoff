@@ -100,10 +100,27 @@
   line-height: 1;
   -webkit-app-region: no-drag;
   transition: color 0.15s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .app-titlebar-theme-btn:hover {
   color: var(--text-primary);
+}
+
+.app-titlebar-theme-btn.active {
+  color: var(--accent);
+}
+
+.app-titlebar-revision-btn {
+  font-size: 14px;
+}
+
+.app-titlebar-icon-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
 }
 
 /* ─── Sidebar ──────────────────────────────────────────────────── */
