@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { FileNode, AIPayload, RevisionMeta } from '../renderer/types/editor'
+import type { FileNode, AIPayload, RevisionMeta, Attachment } from '../renderer/types/editor'
 
 contextBridge.exposeInMainWorld('api', {
   listFiles: (): Promise<FileNode[]> => ipcRenderer.invoke('fs:listFiles'),
@@ -38,6 +38,9 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('ai:streamMessage', payload).catch(reject)
     })
   },
+
+  pickAttachments: (): Promise<Attachment[]> =>
+    ipcRenderer.invoke('fs:pickAttachments'),
 
   removeAIListener: (): void => {
     ipcRenderer.removeAllListeners('ai:chunk')

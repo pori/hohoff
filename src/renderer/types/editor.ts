@@ -5,10 +5,20 @@ export interface FileNode {
   children?: FileNode[]
 }
 
+export interface AttachmentMeta {
+  name: string
+  mimeType: string
+}
+
+export interface Attachment extends AttachmentMeta {
+  data: string // base64 for images, extracted text for text/PDF
+}
+
 export interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
   content: string
+  attachments?: AttachmentMeta[] // metadata only — stored in history for display
 }
 
 export type AnnotationType = 'passive_voice' | 'consistency' | 'style' | 'critique'
@@ -33,6 +43,7 @@ export interface AIPayload {
   documentPath: string
   conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>
   userMessage: string
+  attachments?: Attachment[] // full data for current API call only
 }
 
 export interface RevisionMeta {

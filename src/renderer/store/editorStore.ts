@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { FileNode, ChatMessage, TextAnnotation, AnalysisMode, RevisionMeta } from '../types/editor'
+import type { FileNode, ChatMessage, TextAnnotation, AnalysisMode, RevisionMeta, AttachmentMeta } from '../types/editor'
 
 interface AnnotationFileState {
   mode: AnalysisMode
@@ -24,7 +24,7 @@ interface EditorState {
   chatHistory: ChatMessage[]
   isAILoading: boolean
   aiError: string | null
-  addUserMessage: (text: string) => void
+  addUserMessage: (text: string, attachments?: AttachmentMeta[]) => void
   startAssistantMessage: () => void
   appendToLastAssistantMessage: (chunk: string) => void
   setAILoading: (loading: boolean) => void
@@ -148,8 +148,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   isAILoading: false,
   aiError: null,
 
-  addUserMessage: (text) => {
-    const msg: ChatMessage = { id: `user-${Date.now()}`, role: 'user', content: text }
+  addUserMessage: (text, attachments?) => {
+    const msg: ChatMessage = { id: `user-${Date.now()}`, role: 'user', content: text, attachments }
     set((s) => {
       const history = [...s.chatHistory, msg]
       const byFile = s.activeFilePath

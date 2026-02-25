@@ -4,6 +4,7 @@ import { ChatMessageItem } from './ChatMessageItem'
 import { ChatInput } from './ChatInput'
 import { FeedbackPanel } from '../Feedback/FeedbackPanel'
 import { parseAnnotationsFromAIResponse } from '../../utils/annotationParser'
+import type { Attachment } from '../../types/editor'
 import './Chat.css'
 
 type TabId = 'chat' | 'feedback'
@@ -40,11 +41,11 @@ export function ChatPanel(): JSX.Element {
     prevAnnotationCountRef.current = curr
   }, [annotations])
 
-  const sendMessage = async (text: string): Promise<void> => {
+  const sendMessage = async (text: string, attachments: Attachment[]): Promise<void> => {
     if (!activeFilePath || isAILoading) return
 
     setAIError(null)
-    addUserMessage(text)
+    addUserMessage(text, attachments.map(({ name, mimeType }) => ({ name, mimeType })))
     startAssistantMessage()
     setAILoading(true)
 
@@ -58,7 +59,8 @@ export function ChatPanel(): JSX.Element {
           conversationHistory: chatHistory
             .slice(-10)
             .map((m) => ({ role: m.role, content: m.content })),
-          userMessage: text
+          userMessage: text,
+          attachments: attachments.length > 0 ? attachments : undefined
         },
         (chunk: string) => {
           appendToLastAssistantMessage(chunk)

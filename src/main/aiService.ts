@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
-import type { AIPayload } from '../renderer/types/editor'
+import type { AIPayload, Attachment } from '../renderer/types/editor'
 
 let _client: Anthropic | null = null
 
@@ -89,7 +89,54 @@ SUGGESTION: [concrete direction]
 Name the single most important thing to fix in a revision of this chapter.`
   }
 
-  return `${chapterContext}\n\n${modeInstructions[payload.mode]}`
+  let prompt = `${chapterContext}\n\n${modeInstructions[payload.mode]}`
+
+  if (payload.attachments && payload.attachments.length > 0) {
+    const names = payload.attachments.map((a) => a.name).join(', ')
+    prompt += `\n\nThe user has attached the following reference file(s): ${names}.
+When suggesting edits based on the attached material, identify exact passages in the chapter and use this format for each suggestion:
+ISSUE: [category of improvement]
+PASSAGE: "[exact quoted text from the chapter]"
+PROBLEM: [brief explanation of why this needs changing]
+SUGGESTION: "[revised text]"`
+  }
+
+  return prompt
+}
+
+type UserContentBlock = Anthropic.ImageBlockParam | Anthropic.TextBlockParam
+
+function buildUserContent(
+  userMessage: string,
+  attachments: Attachment[] | undefined
+): string | UserContentBlock[] {
+  if (!attachments || attachments.length === 0) {
+    return userMessage
+  }
+
+  const content: UserContentBlock[] = []
+
+  for (const att of attachments) {
+    if (att.mimeType.startsWith('image/')) {
+      content.push({
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: att.mimeType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
+          data: att.data
+        }
+      })
+    } else {
+      // Text or PDF — include as a fenced text block
+      content.push({
+        type: 'text',
+        text: `--- Attached: ${att.name} ---\n${att.data}\n--- End of ${att.name} ---`
+      })
+    }
+  }
+
+  content.push({ type: 'text', text: userMessage })
+  return content
 }
 
 export async function streamMessage(
@@ -98,9 +145,12 @@ export async function streamMessage(
 ): Promise<void> {
   const client = getClient()
 
-  const messages = [
+  const messages: Anthropic.MessageParam[] = [
     ...payload.conversationHistory.slice(-10),
-    { role: 'user' as const, content: payload.userMessage }
+    {
+      role: 'user' as const,
+      content: buildUserContent(payload.userMessage, payload.attachments)
+    }
   ]
 
   const stream = client.messages.stream({

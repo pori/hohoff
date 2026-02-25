@@ -15,6 +15,7 @@ import '@renderer/styles/app.css'
   removeAIListener: () => {},
   getProjectWordCount: () => Promise.resolve(0),
   saveOrder: () => Promise.resolve(),
+  pickAttachments: () => Promise.resolve([]),
   saveRevision: () => Promise.resolve(),
   listRevisions: () => Promise.resolve([]),
   loadRevision: () => Promise.resolve(''),

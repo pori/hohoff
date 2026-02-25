@@ -5,6 +5,12 @@ import type { ChatMessage } from '../../types/editor'
 
 marked.setOptions({ breaks: true })
 
+function attachmentIcon(mimeType: string): string {
+  if (mimeType.startsWith('image/')) return '🖼'
+  if (mimeType === 'application/pdf') return '📄'
+  return '📝'
+}
+
 interface Props {
   message: ChatMessage
 }
@@ -21,6 +27,16 @@ export function ChatMessageItem({ message }: Props): JSX.Element {
       <div className="chat-message-label">
         {message.role === 'user' ? 'You' : 'Editor AI'}
       </div>
+      {message.attachments && message.attachments.length > 0 && (
+        <div className="chat-message-attachments">
+          {message.attachments.map((att) => (
+            <span key={att.name} className="chat-message-attachment-chip" title={att.name}>
+              {attachmentIcon(att.mimeType)}{' '}
+              {att.name.length > 24 ? att.name.slice(0, 22) + '…' : att.name}
+            </span>
+          ))}
+        </div>
+      )}
       <div className="chat-message-content">
         {html ? (
           <div

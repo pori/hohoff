@@ -1,4 +1,4 @@
-import type { FileNode, AIPayload, RevisionMeta } from './editor'
+import type { FileNode, AIPayload, RevisionMeta, Attachment } from './editor'
 
 declare global {
   interface Window {
@@ -13,6 +13,7 @@ declare global {
       removeAIListener: () => void
       getProjectWordCount: () => Promise<number>
       saveOrder: (order: Record<string, string[]>) => Promise<void>
+      pickAttachments: () => Promise<Attachment[]>
       saveRevision: (filePath: string, content: string) => Promise<void>
       listRevisions: (filePath: string) => Promise<RevisionMeta[]>
       loadRevision: (filePath: string, revisionId: string) => Promise<string>
