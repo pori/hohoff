@@ -69,5 +69,17 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.invoke('revisions:load', filePath, revisionId),
 
   deleteRevision: (filePath: string, revisionId: string): Promise<void> =>
-    ipcRenderer.invoke('revisions:delete', filePath, revisionId)
+    ipcRenderer.invoke('revisions:delete', filePath, revisionId),
+
+  renameNode: (oldPath: string, newName: string): Promise<string> =>
+    ipcRenderer.invoke('fs:rename', oldPath, newName),
+
+  deleteNode: (targetPath: string): Promise<void> =>
+    ipcRenderer.invoke('fs:delete', targetPath),
+
+  createFile: (parentPath: string, name: string): Promise<string> =>
+    ipcRenderer.invoke('fs:createFile', parentPath, name),
+
+  createDir: (parentPath: string, name: string): Promise<string> =>
+    ipcRenderer.invoke('fs:createDir', parentPath, name)
 })

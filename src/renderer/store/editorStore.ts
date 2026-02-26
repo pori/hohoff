@@ -48,6 +48,9 @@ interface EditorState {
   // File tree reordering
   moveNode: (dirPath: string, fromIdx: number, toIdx: number) => void
 
+  // Clear active file (e.g. after deletion)
+  clearActiveFile: () => void
+
   // Word counts
   projectWordCount: number
   setProjectWordCount: (count: number) => void
@@ -114,6 +117,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       return { fileTree: newTree }
     })
   },
+
+  clearActiveFile: () => set({ activeFilePath: null, activeFileContent: '', isDirty: false }),
 
   activeFilePath: null,
   activeFileContent: '',

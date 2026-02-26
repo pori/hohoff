@@ -1,5 +1,5 @@
-import { readdir, readFile, writeFile, mkdir, unlink } from 'fs/promises'
-import { join } from 'path'
+import { readdir, readFile, writeFile, mkdir, unlink, rename as fsRename, rm } from 'fs/promises'
+import { join, dirname } from 'path'
 import type { FileNode, RevisionMeta } from '../renderer/types/editor'
 
 const DRAFT_ROOT =
@@ -214,4 +214,38 @@ export async function deleteRevision(filePath: string, revisionId: string): Prom
   const slug = revisionSlug(filePath)
   const revPath = join(REVISIONS_DIR, slug, `${revisionId}.json`)
   await unlink(revPath)
+}
+
+// ─── File tree mutations ──────────────────────────────────────────────────────
+
+export async function renameFileOrDir(oldPath: string, newName: string): Promise<string> {
+  assertInDraftRoot(oldPath)
+  const isFile = oldPath.endsWith('.md')
+  const newPath = join(dirname(oldPath), isFile ? `${newName}.md` : newName)
+  assertInDraftRoot(newPath)
+  await fsRename(oldPath, newPath)
+  return newPath
+}
+
+export async function deleteFileOrDir(targetPath: string): Promise<void> {
+  assertInDraftRoot(targetPath)
+  await rm(targetPath, { recursive: true, force: true })
+}
+
+export async function createMarkdownFile(parentPath: string, name: string): Promise<string> {
+  const dir = parentPath === '__root__' ? DRAFT_ROOT : parentPath
+  assertInDraftRoot(dir)
+  const filePath = join(dir, `${name}.md`)
+  assertInDraftRoot(filePath)
+  await writeFile(filePath, '', 'utf-8')
+  return filePath
+}
+
+export async function createSubdirectory(parentPath: string, name: string): Promise<string> {
+  const parent = parentPath === '__root__' ? DRAFT_ROOT : parentPath
+  assertInDraftRoot(parent)
+  const newDir = join(parent, name)
+  assertInDraftRoot(newDir)
+  await mkdir(newDir, { recursive: true })
+  return newDir
 }

@@ -18,6 +18,10 @@ declare global {
       listRevisions: (filePath: string) => Promise<RevisionMeta[]>
       loadRevision: (filePath: string, revisionId: string) => Promise<string>
       deleteRevision: (filePath: string, revisionId: string) => Promise<void>
+      renameNode: (oldPath: string, newName: string) => Promise<string>
+      deleteNode: (targetPath: string) => Promise<void>
+      createFile: (parentPath: string, name: string) => Promise<string>
+      createDir: (parentPath: string, name: string) => Promise<string>
     }
   }
 }
