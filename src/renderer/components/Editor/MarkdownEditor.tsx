@@ -41,6 +41,27 @@ const rawAnnotationsField = StateField.define<TextAnnotation[]>({
 // Per-session cache: annotation id → { text, suggestion extracted from blockquote }
 export const tooltipAnalysisCache = new Map<string, { text: string; suggestion: string | null }>()
 
+// Debounced auto-dismissal when the user edits text inside a highlighted range.
+// Exported so FeedbackPanel can cancel a pending timer on manual dismiss.
+const EDIT_DISMISS_MS = 1200
+const dismissTimers = new Map<string, ReturnType<typeof setTimeout>>()
+
+export function cancelPendingDismiss(id: string): void {
+  const t = dismissTimers.get(id)
+  if (t !== undefined) { clearTimeout(t); dismissTimers.delete(id) }
+}
+
+function schedulePendingDismiss(id: string): void {
+  const existing = dismissTimers.get(id)
+  if (existing !== undefined) clearTimeout(existing)
+  dismissTimers.set(id, setTimeout(() => {
+    dismissTimers.delete(id)
+    const { removeAnnotation } = useEditorStore.getState()
+    removeAnnotation(id)
+    tooltipAnalysisCache.delete(id)
+  }, EDIT_DISMISS_MS))
+}
+
 // Extract the first blockquote from a markdown string — used as the applicable rewrite
 function extractBlockquote(md: string): string | null {
   const lines = md.split('\n')
@@ -357,10 +378,35 @@ export function MarkdownEditor(): JSX.Element {
               tr => tr.isUserEvent('undo') || tr.isUserEvent('redo')
             )
             if (hasUndoRedo) {
+              // User is reverting edits — cancel any pending auto-dismissals so
+              // restored highlights aren't immediately removed.
+              dismissTimers.forEach((_, id) => cancelPendingDismiss(id))
               const prev = update.startState.field(rawAnnotationsField)
               const curr = update.state.field(rawAnnotationsField)
               if (prev !== curr) {
                 useEditorStore.getState().setAnnotations(curr)
+              }
+              return
+            }
+
+            // Auto-dismiss annotations whose highlighted text the user edits.
+            // We check the pre-edit annotation positions (startState) against
+            // each changed range reported by the transaction.
+            if (update.docChanged) {
+              const preAnnotations = update.startState.field(rawAnnotationsField)
+              if (preAnnotations.length > 0) {
+                for (const tr of update.transactions) {
+                  if (!tr.docChanged) continue
+                  // Skip non-user events such as file loads (addToHistory=false).
+                  if (tr.annotation(Transaction.addToHistory) === false) continue
+                  tr.changes.iterChangedRanges((fromA, toA) => {
+                    for (const ann of preAnnotations) {
+                      if (fromA < ann.to && toA > ann.from) {
+                        schedulePendingDismiss(ann.id)
+                      }
+                    }
+                  })
+                }
               }
             }
           })

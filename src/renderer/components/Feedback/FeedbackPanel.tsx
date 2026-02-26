@@ -5,6 +5,7 @@ import { useEditorStore } from '../../store/editorStore'
 import type { TextAnnotation } from '../../types/editor'
 import {
   tooltipAnalysisCache,
+  cancelPendingDismiss,
   analyseAnnotation,
   scrollToAnnotation,
   applyAnnotation
@@ -189,7 +190,7 @@ export function FeedbackPanel(): JSX.Element {
             key={ann.id}
             ann={ann}
             autoAnalyse={analyseAll}
-            onDismiss={() => { removeAnnotation(ann.id); tooltipAnalysisCache.delete(ann.id) }}
+            onDismiss={() => { cancelPendingDismiss(ann.id); removeAnnotation(ann.id); tooltipAnalysisCache.delete(ann.id) }}
           />
         ))}
       </div>
