@@ -33,9 +33,10 @@ function renderMarkdown(text: string, streaming: boolean): string {
 interface FeedbackCardProps {
   ann: TextAnnotation
   autoAnalyse: boolean
+  onDismiss: () => void
 }
 
-function FeedbackCard({ ann, autoAnalyse }: FeedbackCardProps): JSX.Element {
+function FeedbackCard({ ann, autoAnalyse, onDismiss }: FeedbackCardProps): JSX.Element {
   const [state, setState] = useState<AnalysisState>(() => {
     const cached = tooltipAnalysisCache.get(ann.id)
     if (cached) return { status: 'done', text: cached.text, suggestion: cached.suggestion }
@@ -82,7 +83,16 @@ function FeedbackCard({ ann, autoAnalyse }: FeedbackCardProps): JSX.Element {
     >
       {/* Header — click to jump to passage in editor */}
       <div className="fb-card-header" onClick={() => scrollToAnnotation(ann)} title="Jump to passage">
-        <span className="fb-card-badge">{typeName}</span>
+        <div className="fb-card-header-top">
+          <span className="fb-card-badge">{typeName}</span>
+          <button
+            className="fb-card-dismiss"
+            onClick={(e) => { e.stopPropagation(); onDismiss() }}
+            title="Dismiss"
+          >
+            ×
+          </button>
+        </div>
         <span className="fb-card-excerpt">"{ann.matchedText}"</span>
       </div>
 
@@ -124,7 +134,7 @@ function FeedbackCard({ ann, autoAnalyse }: FeedbackCardProps): JSX.Element {
 }
 
 export function FeedbackPanel(): JSX.Element {
-  const { annotations, setAnnotations } = useEditorStore()
+  const { annotations, setAnnotations, removeAnnotation } = useEditorStore()
   const [analyseAll, setAnalyseAll] = useState(false)
 
   // Reset "Analyse all" whenever the annotation set changes (new critique run),
@@ -175,7 +185,12 @@ export function FeedbackPanel(): JSX.Element {
 
       <div className="fb-list">
         {annotations.map(ann => (
-          <FeedbackCard key={ann.id} ann={ann} autoAnalyse={analyseAll} />
+          <FeedbackCard
+            key={ann.id}
+            ann={ann}
+            autoAnalyse={analyseAll}
+            onDismiss={() => { removeAnnotation(ann.id); tooltipAnalysisCache.delete(ann.id) }}
+          />
         ))}
       </div>
     </div>

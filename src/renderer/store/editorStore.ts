@@ -35,6 +35,7 @@ interface EditorState {
   annotations: TextAnnotation[]
   annotationsByFile: Record<string, AnnotationFileState>
   setAnnotations: (annotations: TextAnnotation[]) => void
+  removeAnnotation: (id: string) => void
   clearAnnotations: () => void
 
   // Analysis mode
@@ -237,6 +238,24 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   annotationsByFile: {},
   setAnnotations: (annotations) => {
     set((s) => {
+      const annotationsByFile = s.activeFilePath
+        ? { ...s.annotationsByFile, [s.activeFilePath]: { mode: s.analysisMode, annotations } }
+        : s.annotationsByFile
+      return { annotations, annotationsByFile }
+    })
+    scheduleSave(() => {
+      const st = get()
+      return {
+        activeFilePath: st.activeFilePath,
+        scrollPositions: st.scrollPositions,
+        chatHistoryByFile: st.chatHistoryByFile,
+        annotationsByFile: st.annotationsByFile
+      }
+    })
+  },
+  removeAnnotation: (id) => {
+    set((s) => {
+      const annotations = s.annotations.filter((a) => a.id !== id)
       const annotationsByFile = s.activeFilePath
         ? { ...s.annotationsByFile, [s.activeFilePath]: { mode: s.analysisMode, annotations } }
         : s.annotationsByFile

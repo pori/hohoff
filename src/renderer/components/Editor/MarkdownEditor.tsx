@@ -15,12 +15,24 @@ import './Editor.css'
 // StateEffect to push new annotations into the editor
 export const setAnnotationsEffect = StateEffect.define<TextAnnotation[]>()
 
-// StateField stores the raw annotation array for hover lookup
+// StateField stores the raw annotation array for hover lookup.
+// Positions are mapped through every document change so the field always
+// reflects where annotations actually are in the current document.
+// Zero-width entries (from === to after a deletion) are intentionally kept:
+// if the user cuts text and pastes it back at the same spot, the position
+// expands and the decoration reappears automatically.
 const rawAnnotationsField = StateField.define<TextAnnotation[]>({
   create: () => [],
   update(annotations, tr) {
     for (const effect of tr.effects) {
       if (effect.is(setAnnotationsEffect)) return effect.value
+    }
+    if (tr.docChanged && annotations.length > 0) {
+      return annotations.map(a => ({
+        ...a,
+        from: tr.changes.mapPos(a.from, -1),
+        to:   tr.changes.mapPos(a.to,   1)
+      }))
     }
     return annotations
   }
@@ -194,32 +206,32 @@ const annotationHoverTooltip = hoverTooltip(
   { hoverTime: 500 }
 )
 
-// StateField tracks the decoration set derived from annotations
+// Build a DecorationSet from an annotation list, clamped to docLen.
+function buildDecoSet(annotations: TextAnnotation[], docLen: number): DecorationSet {
+  const builder = new RangeSetBuilder<Decoration>()
+  const sorted = [...annotations].sort((a, b) => a.from - b.from)
+  for (const ann of sorted) {
+    const from = Math.max(0, Math.min(ann.from, docLen))
+    const to   = Math.max(from, Math.min(ann.to,   docLen))
+    if (from < to) {
+      builder.add(from, to, Decoration.mark({
+        class: `annotation annotation-${ann.type}`,
+        attributes: { 'data-id': ann.id }
+      }))
+    }
+  }
+  return builder.finish()
+}
+
+// StateField tracks the decoration set derived from annotations.
+// Rebuilds from rawAnnotationsField on every doc change (not deco.map) so that
+// position-mapped highlights update immediately, and a decoration whose text
+// was cut and pasted back at the same spot reappears without any extra action.
 const annotationField = StateField.define<DecorationSet>({
   create: () => Decoration.none,
   update(deco, tr) {
-    deco = deco.map(tr.changes)
-    for (const effect of tr.effects) {
-      if (effect.is(setAnnotationsEffect)) {
-        const builder = new RangeSetBuilder<Decoration>()
-        const sorted = [...effect.value].sort((a, b) => a.from - b.from)
-        for (const ann of sorted) {
-          const docLen = tr.newDoc.length
-          const from = Math.max(0, Math.min(ann.from, docLen))
-          const to = Math.max(from, Math.min(ann.to, docLen))
-          if (from < to) {
-            builder.add(
-              from,
-              to,
-              Decoration.mark({
-                class: `annotation annotation-${ann.type}`,
-                attributes: { 'data-id': ann.id }
-              })
-            )
-          }
-        }
-        return builder.finish()
-      }
+    if (tr.docChanged || tr.effects.some(e => e.is(setAnnotationsEffect))) {
+      return buildDecoSet(tr.state.field(rawAnnotationsField), tr.newDoc.length)
     }
     return deco
   },
@@ -412,11 +424,16 @@ export function MarkdownEditor(): JSX.Element {
     }
   }, [activeFilePath]) // Only sync on file switch
 
-  // Push annotation decorations into CodeMirror
+  // Push annotation decorations into CodeMirror.
+  // Merge the store's list (which annotations exist) with CM-tracked positions
+  // (where they actually are after any edits), so that dismissing or adding an
+  // annotation doesn't reset surviving highlights to stale store positions.
   useEffect(() => {
     const view = viewRef.current
     if (!view) return
-    view.dispatch({ effects: setAnnotationsEffect.of(annotations) })
+    const trackedById = new Map(view.state.field(rawAnnotationsField).map(a => [a.id, a]))
+    const toDispatch = annotations.map(a => trackedById.get(a.id) ?? a)
+    view.dispatch({ effects: setAnnotationsEffect.of(toDispatch) })
   }, [annotations])
 
   // Reconfigure theme when font size or colour theme changes
