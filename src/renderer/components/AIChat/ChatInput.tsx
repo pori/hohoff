@@ -1,5 +1,7 @@
 import { useState, useRef, type KeyboardEvent } from 'react'
 import type { Attachment } from '../../types/editor'
+import { ContextMenu } from '../FileTree/ContextMenu'
+import type { MenuItem } from '../FileTree/ContextMenu'
 
 interface Props {
   onSend: (text: string, attachments: Attachment[]) => void
@@ -15,6 +17,8 @@ function attachmentIcon(mimeType: string): string {
 export function ChatInput({ onSend, disabled }: Props): JSX.Element {
   const [value, setValue] = useState('')
   const [attachments, setAttachments] = useState<Attachment[]>([])
+  const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null)
+  const [hasSelection, setHasSelection] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const submit = (): void => {
@@ -59,6 +63,76 @@ export function ChatInput({ onSend, disabled }: Props): JSX.Element {
   }
 
   const canSend = !disabled && (value.trim().length > 0 || attachments.length > 0)
+
+  function handleContextMenu(e: React.MouseEvent<HTMLTextAreaElement>): void {
+    if (disabled) return
+    e.preventDefault()
+    const el = textareaRef.current
+    setHasSelection(!!el && el.selectionStart !== el.selectionEnd)
+    setMenuPos({ x: e.clientX, y: e.clientY })
+  }
+
+  const chatInputMenuItems: (MenuItem | 'separator')[] = [
+    {
+      label: 'Cut',
+      disabled: !hasSelection,
+      action: () => {
+        const el = textareaRef.current
+        if (!el) return
+        const { selectionStart: start, selectionEnd: end } = el
+        if (start === end) return
+        navigator.clipboard.writeText(value.slice(start, end)).catch(console.error)
+        const next = value.slice(0, start) + value.slice(end)
+        setValue(next)
+        requestAnimationFrame(() => {
+          el.selectionStart = el.selectionEnd = start
+          el.style.height = 'auto'
+          el.style.height = `${Math.min(el.scrollHeight, 160)}px`
+          el.focus()
+        })
+      }
+    },
+    {
+      label: 'Copy',
+      disabled: !hasSelection,
+      action: () => {
+        const el = textareaRef.current
+        if (!el) return
+        const { selectionStart: start, selectionEnd: end } = el
+        if (start === end) return
+        navigator.clipboard.writeText(value.slice(start, end)).catch(console.error)
+        el.focus()
+      }
+    },
+    {
+      label: 'Paste',
+      action: () => {
+        const el = textareaRef.current
+        if (!el) return
+        navigator.clipboard.readText().then((text) => {
+          const { selectionStart: start, selectionEnd: end } = el
+          const next = value.slice(0, start) + text + value.slice(end)
+          setValue(next)
+          requestAnimationFrame(() => {
+            el.selectionStart = el.selectionEnd = start + text.length
+            el.style.height = 'auto'
+            el.style.height = `${Math.min(el.scrollHeight, 160)}px`
+            el.focus()
+          })
+        }).catch(console.error)
+      }
+    },
+    'separator',
+    {
+      label: 'Select All',
+      action: () => {
+        const el = textareaRef.current
+        if (!el) return
+        el.select()
+        setHasSelection(el.value.length > 0)
+      }
+    }
+  ]
 
   return (
     <div className="chat-input-area">
@@ -107,6 +181,7 @@ export function ChatInput({ onSend, disabled }: Props): JSX.Element {
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
           onInput={handleInput}
+          onContextMenu={handleContextMenu}
           placeholder={disabled ? 'Open a chapter first…' : 'Ask about this chapter… (Enter to send)'}
           disabled={disabled}
           rows={1}
@@ -120,6 +195,14 @@ export function ChatInput({ onSend, disabled }: Props): JSX.Element {
           ↑
         </button>
       </div>
+      {menuPos && (
+        <ContextMenu
+          x={menuPos.x}
+          y={menuPos.y}
+          items={chatInputMenuItems}
+          onClose={() => setMenuPos(null)}
+        />
+      )}
     </div>
   )
 }
