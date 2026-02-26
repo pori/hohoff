@@ -1,13 +1,15 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { EditorView, Decoration, type DecorationSet, hoverTooltip, keymap } from '@codemirror/view'
 import { EditorState, StateField, StateEffect, RangeSetBuilder, Compartment, Transaction } from '@codemirror/state'
 import { markdown } from '@codemirror/lang-markdown'
 import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
-import { history, defaultKeymap, historyKeymap, invertedEffects } from '@codemirror/commands'
+import { history, defaultKeymap, historyKeymap, invertedEffects, selectAll } from '@codemirror/commands'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import { useEditorStore } from '../../store/editorStore'
 import type { TextAnnotation } from '../../types/editor'
+import { ContextMenu } from '../FileTree/ContextMenu'
+import type { MenuItem } from '../FileTree/ContextMenu'
 import './Editor.css'
 
 // StateEffect to push new annotations into the editor
@@ -306,6 +308,8 @@ function buildTheme(fontSize: number, dark: boolean): ReturnType<typeof EditorVi
 export function MarkdownEditor(): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
+  const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null)
+  const [hasSelection, setHasSelection] = useState(false)
   const { activeFilePath, activeFileContent, setContent, annotations, fontSize, theme, scrollPositions } = useEditorStore()
 
   // Initialize CodeMirror once
@@ -329,6 +333,10 @@ export function MarkdownEditor(): JSX.Element {
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {
               setContent(update.state.doc.toString())
+            }
+            if (update.selectionSet) {
+              const { from, to } = update.state.selection.main
+              setHasSelection(from !== to)
             }
             // When the user Cmd+Z's through an Apply, invertedEffects fires a
             // setAnnotationsEffect restoring the old list inside CM. Sync that
@@ -418,8 +426,69 @@ export function MarkdownEditor(): JSX.Element {
     view.dispatch({ effects: themeCompartment.reconfigure(buildTheme(fontSize, theme === 'dark')) })
   }, [fontSize, theme])
 
+  function handleContextMenu(e: React.MouseEvent): void {
+    if (!activeFilePath) return
+    e.preventDefault()
+    const view = viewRef.current
+    if (view) {
+      const { from, to } = view.state.selection.main
+      setHasSelection(from !== to)
+    }
+    setMenuPos({ x: e.clientX, y: e.clientY })
+  }
+
+  const editorMenuItems: (MenuItem | 'separator')[] = [
+    {
+      label: 'Cut',
+      disabled: !hasSelection,
+      action: () => {
+        const view = viewRef.current
+        if (!view) return
+        const { from, to } = view.state.selection.main
+        if (from === to) return
+        navigator.clipboard.writeText(view.state.sliceDoc(from, to)).catch(console.error)
+        view.dispatch({ changes: { from, to, insert: '' } })
+        view.focus()
+      }
+    },
+    {
+      label: 'Copy',
+      disabled: !hasSelection,
+      action: () => {
+        const view = viewRef.current
+        if (!view) return
+        const { from, to } = view.state.selection.main
+        if (from === to) return
+        navigator.clipboard.writeText(view.state.sliceDoc(from, to)).catch(console.error)
+        view.focus()
+      }
+    },
+    {
+      label: 'Paste',
+      action: () => {
+        const view = viewRef.current
+        if (!view) return
+        navigator.clipboard.readText().then((text) => {
+          const { from, to } = view.state.selection.main
+          view.dispatch({ changes: { from, to, insert: text } })
+          view.focus()
+        }).catch(console.error)
+      }
+    },
+    'separator',
+    {
+      label: 'Select All',
+      action: () => {
+        const view = viewRef.current
+        if (!view) return
+        selectAll(view)
+        view.focus()
+      }
+    }
+  ]
+
   return (
-    <div className="editor-container">
+    <div className="editor-container" onContextMenu={handleContextMenu}>
       {!activeFilePath && (
         <div className="editor-empty">
           <p>Select a chapter from the sidebar to begin editing.</p>
@@ -427,6 +496,14 @@ export function MarkdownEditor(): JSX.Element {
         </div>
       )}
       <div ref={containerRef} className="codemirror-host" />
+      {menuPos && (
+        <ContextMenu
+          x={menuPos.x}
+          y={menuPos.y}
+          items={editorMenuItems}
+          onClose={() => setMenuPos(null)}
+        />
+      )}
     </div>
   )
 }

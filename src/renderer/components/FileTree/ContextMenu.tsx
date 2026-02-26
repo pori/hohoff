@@ -1,10 +1,12 @@
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import './ContextMenu.css'
 
 export interface MenuItem {
   label: string
   action: () => void
   danger?: boolean
+  disabled?: boolean
 }
 
 interface Props {
@@ -43,6 +45,7 @@ export function ContextMenu({ x, y, items, onClose }: Props): JSX.Element {
           <button
             key={i}
             className={`context-menu-item${item.danger ? ' danger' : ''}`}
+            disabled={item.disabled}
             onClick={() => {
               onClose()
               item.action()

@@ -1,0 +1,55 @@
+.context-menu {
+  position: fixed;
+  min-width: 148px;
+  background: var(--message-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  padding: 3px 0;
+  z-index: 9999;
+  user-select: none;
+}
+
+.context-menu-item {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  padding: 6px 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.context-menu-item:hover:not(:disabled) {
+  background: var(--active-bg);
+}
+
+/* Disabled items (e.g. Cut/Copy with no selection) */
+.context-menu-item:disabled {
+  color: var(--text-muted);
+  cursor: default;
+  pointer-events: none;
+}
+
+/* Danger items (e.g. Delete) */
+.context-menu-item.danger {
+  color: #c05050;
+}
+
+html.light .context-menu-item.danger {
+  color: #a03030;
+}
+
+.context-menu-item.danger:hover:not(:disabled) {
+  background: rgba(192, 80, 80, 0.1);
+}
+
+.context-menu-separator {
+  height: 1px;
+  background: var(--border);
+  margin: 3px 0;
+}
