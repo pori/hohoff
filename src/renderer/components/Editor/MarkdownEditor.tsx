@@ -348,6 +348,11 @@ function buildTheme(fontSize: number, dark: boolean): ReturnType<typeof EditorVi
       backgroundColor: 'rgba(160, 80, 220, 0.18)',
       borderBottom: '2px solid rgba(160, 80, 220, 0.7)',
       borderRadius: '2px'
+    },
+    '.annotation-custom': {
+      backgroundColor: 'rgba(30, 200, 150, 0.15)',
+      borderBottom: '2px solid rgba(30, 200, 150, 0.7)',
+      borderRadius: '2px'
     }
   },
   { dark }
