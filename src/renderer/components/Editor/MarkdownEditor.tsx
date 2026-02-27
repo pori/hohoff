@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { EditorView, Decoration, type DecorationSet, hoverTooltip, keymap } from '@codemirror/view'
-import { EditorState, StateField, StateEffect, RangeSetBuilder, Compartment, Transaction } from '@codemirror/state'
+import { EditorState, StateField, StateEffect, Annotation, RangeSetBuilder, Compartment, Transaction } from '@codemirror/state'
 import { markdown } from '@codemirror/lang-markdown'
 import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
 import { history, defaultKeymap, historyKeymap, invertedEffects, selectAll } from '@codemirror/commands'
@@ -14,6 +14,10 @@ import './Editor.css'
 
 // StateEffect to push new annotations into the editor
 export const setAnnotationsEffect = StateEffect.define<TextAnnotation[]>()
+
+// Annotation tag that marks an auto-dismiss transaction so annotationHistory
+// records its inverse, making the dismissal undoable with Cmd+Z.
+const userDismissAnnotation = Annotation.define<boolean>()
 
 // StateField stores the raw annotation array for hover lookup.
 // Positions are mapped through every document change so the field always
@@ -56,9 +60,21 @@ function schedulePendingDismiss(id: string): void {
   if (existing !== undefined) clearTimeout(existing)
   dismissTimers.set(id, setTimeout(() => {
     dismissTimers.delete(id)
-    const { removeAnnotation } = useEditorStore.getState()
-    removeAnnotation(id)
     tooltipAnalysisCache.delete(id)
+    const view = currentEditorView
+    if (!view) {
+      // No editor mounted — fall back to direct store update (not undoable)
+      useEditorStore.getState().removeAnnotation(id)
+      return
+    }
+    // Dispatch a tagged CM transaction so annotationHistory records the inverse
+    // and the dismissal can be undone with Cmd+Z.
+    const remaining = view.state.field(rawAnnotationsField).filter(a => a.id !== id)
+    view.dispatch({
+      effects: setAnnotationsEffect.of(remaining),
+      annotations: [userDismissAnnotation.of(true)]
+    })
+    // Store sync is handled by the updateListener detecting userDismissAnnotation.
   }, EDIT_DISMISS_MS))
 }
 
@@ -259,16 +275,16 @@ const annotationField = StateField.define<DecorationSet>({
   provide: (f) => EditorView.decorations.from(f)
 })
 
-// Teach CM's undo/redo history about annotation state so that Cmd+Z after
-// an Apply also restores the highlight. For every transaction that carries a
-// setAnnotationsEffect we record the *previous* annotation list as the
-// inverse effect; CM history replays it on undo.
+// Teach CM's undo/redo history about annotation state so Cmd+Z can restore
+// highlights. Records the previous annotation list as the inverse effect for:
+//   • Apply suggestion  (docChanged + setAnnotationsEffect)
+//   • Edit-triggered auto-dismiss  (tagged with userDismissAnnotation)
+// External updates (critique loads, store clears) have neither flag and must
+// NOT enter the undo stack or Undo would remove highlights unexpectedly.
 const annotationHistory = invertedEffects.of(tr => {
-  // Only track annotation changes that accompany a document edit (i.e. an
-  // Apply). External updates — critique results loading, store clears — have
-  // no doc change and must NOT enter the undo stack, otherwise Undo removes
-  // highlights before touching any text.
-  if (tr.docChanged && tr.effects.some(e => e.is(setAnnotationsEffect))) {
+  const isApply = tr.docChanged && tr.effects.some(e => e.is(setAnnotationsEffect))
+  const isAutoDismiss = tr.annotation(userDismissAnnotation) === true
+  if (isApply || isAutoDismiss) {
     const before = tr.startState.field(rawAnnotationsField)
     return [setAnnotationsEffect.of(before)]
   }
@@ -389,6 +405,14 @@ export function MarkdownEditor(): JSX.Element {
               return
             }
 
+            // When the debounce timer fires it dispatches a tagged CM transaction
+            // (no doc change). Sync the resulting annotation list to the store so
+            // the feedback panel reflects the dismissal immediately.
+            if (update.transactions.some(tr => tr.annotation(userDismissAnnotation) === true)) {
+              useEditorStore.getState().setAnnotations(update.state.field(rawAnnotationsField))
+              return
+            }
+
             // Auto-dismiss annotations whose highlighted text the user edits.
             // We check the pre-edit annotation positions (startState) against
             // each changed range reported by the transaction.
@@ -474,12 +498,17 @@ export function MarkdownEditor(): JSX.Element {
   // Merge the store's list (which annotations exist) with CM-tracked positions
   // (where they actually are after any edits), so that dismissing or adding an
   // annotation doesn't reset surviving highlights to stale store positions.
+  // Marked addToHistory.of(false) so this sync dispatch never creates an undo
+  // step — only Apply and tagged auto-dismissals should be undoable.
   useEffect(() => {
     const view = viewRef.current
     if (!view) return
     const trackedById = new Map(view.state.field(rawAnnotationsField).map(a => [a.id, a]))
     const toDispatch = annotations.map(a => trackedById.get(a.id) ?? a)
-    view.dispatch({ effects: setAnnotationsEffect.of(toDispatch) })
+    view.dispatch({
+      effects: setAnnotationsEffect.of(toDispatch),
+      annotations: [Transaction.addToHistory.of(false)]
+    })
   }, [annotations])
 
   // Reconfigure theme when font size or colour theme changes

@@ -28,6 +28,7 @@ export function ChatPanel(): JSX.Element {
   } = useEditorStore()
 
   const [tab, setTab] = useState<TabId>('chat')
+  const [pendingAttachmentCount, setPendingAttachmentCount] = useState(0)
   const scrollRef = useRef<HTMLDivElement>(null)
   const prevAnnotationCountRef = useRef(annotations.length)
 
@@ -122,6 +123,14 @@ export function ChatPanel(): JSX.Element {
         )}
       </div>
 
+      {/* ── Pending-attachment indicator ── */}
+      {pendingAttachmentCount > 0 && (
+        <div className="chat-attachment-indicator">
+          <span className="chat-attachment-indicator-icon">⌁</span>
+          {pendingAttachmentCount} file{pendingAttachmentCount !== 1 ? 's' : ''} attached to next message
+        </div>
+      )}
+
       {/* ── Panel content ── */}
       {tab === 'feedback' ? (
         <FeedbackPanel />
@@ -151,7 +160,11 @@ export function ChatPanel(): JSX.Element {
             )}
           </div>
 
-          <ChatInput onSend={sendMessage} disabled={!hasFile || isAILoading} />
+          <ChatInput
+            onSend={sendMessage}
+            onAttachmentsChange={setPendingAttachmentCount}
+            disabled={!hasFile || isAILoading}
+          />
         </>
       )}
     </div>

@@ -97,11 +97,12 @@ export function registerIpcHandlers(): void {
         const data = readFileSync(filePath, 'utf-8')
         attachments.push({ name, mimeType: 'text/plain', data })
       } else if (ext === '.pdf') {
-        // Dynamically require pdf-parse to avoid CJS/ESM issues at module load time
+        // pdf-parse v2 API: new PDFParse({ data: buffer }) then .getText()
         // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const pdfParse = require('pdf-parse') as (buf: Buffer) => Promise<{ text: string }>
+        const { PDFParse } = require('pdf-parse') as { PDFParse: new (opts: { data: Uint8Array }) => { getText: () => Promise<{ text: string }> } }
         const buffer = readFileSync(filePath)
-        const parsed = await pdfParse(buffer)
+        const parser = new PDFParse({ data: new Uint8Array(buffer) })
+        const parsed = await parser.getText()
         attachments.push({ name, mimeType: 'application/pdf', data: parsed.text })
       }
     }

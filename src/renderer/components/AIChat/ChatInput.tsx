@@ -5,6 +5,7 @@ import type { MenuItem } from '../FileTree/ContextMenu'
 
 interface Props {
   onSend: (text: string, attachments: Attachment[]) => void
+  onAttachmentsChange?: (count: number) => void
   disabled: boolean
 }
 
@@ -14,19 +15,24 @@ function attachmentIcon(mimeType: string): string {
   return '📝'
 }
 
-export function ChatInput({ onSend, disabled }: Props): JSX.Element {
+export function ChatInput({ onSend, onAttachmentsChange, disabled }: Props): JSX.Element {
   const [value, setValue] = useState('')
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null)
   const [hasSelection, setHasSelection] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
+  const updateAttachments = (next: Attachment[]): void => {
+    setAttachments(next)
+    onAttachmentsChange?.(next.length)
+  }
+
   const submit = (): void => {
     const trimmed = value.trim()
     if ((!trimmed && attachments.length === 0) || disabled) return
     onSend(trimmed, attachments)
     setValue('')
-    setAttachments([])
+    updateAttachments([])
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto'
     }
@@ -54,12 +60,18 @@ export function ChatInput({ onSend, disabled }: Props): JSX.Element {
     setAttachments((prev) => {
       const existingNames = new Set(prev.map((a) => a.name))
       const fresh = picked.filter((a) => !existingNames.has(a.name))
-      return [...prev, ...fresh]
+      const next = [...prev, ...fresh]
+      onAttachmentsChange?.(next.length)
+      return next
     })
   }
 
   const removeAttachment = (name: string): void => {
-    setAttachments((prev) => prev.filter((a) => a.name !== name))
+    setAttachments((prev) => {
+      const next = prev.filter((a) => a.name !== name)
+      onAttachmentsChange?.(next.length)
+      return next
+    })
   }
 
   const canSend = !disabled && (value.trim().length > 0 || attachments.length > 0)
