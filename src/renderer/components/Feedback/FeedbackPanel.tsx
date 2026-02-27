@@ -23,6 +23,7 @@ function badgeColor(type: TextAnnotation['type']): string {
     case 'consistency':   return 'rgba(220, 80, 80, 0.75)'
     case 'style':         return 'rgba(80, 160, 255, 0.75)'
     case 'critique':      return 'rgba(160, 80, 220, 0.75)'
+    case 'custom':        return 'rgba(30, 200, 150, 0.8)'
   }
 }
 
@@ -41,6 +42,11 @@ function FeedbackCard({ ann, autoAnalyse, onDismiss }: FeedbackCardProps): JSX.E
   const [state, setState] = useState<AnalysisState>(() => {
     const cached = tooltipAnalysisCache.get(ann.id)
     if (cached) return { status: 'done', text: cached.text, suggestion: cached.suggestion }
+    // Custom (attachment-driven) annotations already carry their analysis — show
+    // the problem description and suggestion immediately without an extra AI call.
+    if (ann.type === 'custom') {
+      return { status: 'done', text: ann.message, suggestion: ann.suggestion ?? null }
+    }
     return { status: 'idle' }
   })
 
@@ -85,7 +91,12 @@ function FeedbackCard({ ann, autoAnalyse, onDismiss }: FeedbackCardProps): JSX.E
       {/* Header — click to jump to passage in editor */}
       <div className="fb-card-header" onClick={() => scrollToAnnotation(ann)} title="Jump to passage">
         <div className="fb-card-header-top">
-          <span className="fb-card-badge">{typeName}</span>
+          <div className="fb-card-header-badges">
+            <span className="fb-card-badge">{typeName}</span>
+            {ann.type === 'custom' && (
+              <span className="fb-card-source-tag">from attachment</span>
+            )}
+          </div>
           <button
             className="fb-card-dismiss"
             onClick={(e) => { e.stopPropagation(); onDismiss() }}
@@ -135,7 +146,7 @@ function FeedbackCard({ ann, autoAnalyse, onDismiss }: FeedbackCardProps): JSX.E
 }
 
 export function FeedbackPanel(): JSX.Element {
-  const { annotations, setAnnotations, removeAnnotation } = useEditorStore()
+  const { annotations, clearAnnotations, removeAnnotation } = useEditorStore()
   const [analyseAll, setAnalyseAll] = useState(false)
 
   // Reset "Analyse all" whenever the annotation set changes (new critique run),
@@ -149,7 +160,7 @@ export function FeedbackPanel(): JSX.Element {
   }, [annotations])
 
   function handleClearAll(): void {
-    setAnnotations([])
+    clearAnnotations()
     tooltipAnalysisCache.clear()
   }
 

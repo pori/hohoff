@@ -68,11 +68,14 @@ export function ChatPanel(): JSX.Element {
         }
       )
 
-      // After streaming, parse AI response for annotations
+      // After streaming, parse AI response for annotations.
+      // Attachment-driven messages are tagged 'custom' so they appear with a
+      // distinct visual treatment in the Feedback panel.
       const currentHistory = useEditorStore.getState().chatHistory
       const lastMsg = currentHistory[currentHistory.length - 1]
       if (lastMsg?.role === 'assistant' && lastMsg.content.length > 0) {
-        const parsed = parseAnnotationsFromAIResponse(lastMsg.content, activeFileContent)
+        const overrideType = attachments.length > 0 ? 'custom' as const : undefined
+        const parsed = parseAnnotationsFromAIResponse(lastMsg.content, activeFileContent, overrideType)
         if (parsed.length > 0) {
           setAnnotations(parsed)
         }

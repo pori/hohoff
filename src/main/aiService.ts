@@ -93,12 +93,23 @@ Name the single most important thing to fix in a revision of this chapter.`
 
   if (payload.attachments && payload.attachments.length > 0) {
     const names = payload.attachments.map((a) => a.name).join(', ')
-    prompt += `\n\nThe user has attached the following reference file(s): ${names}.
-When suggesting edits based on the attached material, identify exact passages in the chapter and use this format for each suggestion:
-ISSUE: [category of improvement]
-PASSAGE: "[exact quoted text from the chapter]"
-PROBLEM: [brief explanation of why this needs changing]
-SUGGESTION: "[revised text]"`
+    prompt += `\n\n---
+ATTACHED REFERENCE MATERIAL: ${names}
+
+The user has provided reference file(s) above. Based on these references and the user's instruction, identify specific passages in the chapter that should be changed.
+
+You MUST output every suggested edit in this exact structured format — no other format will create highlights in the editor:
+
+ISSUE: [short category label, e.g. "Tone", "Vocabulary", "Style Match", "Pacing"]
+PASSAGE: "[copy the exact verbatim text from the chapter — at least 10 characters, unique enough to be found]"
+PROBLEM: [one sentence explaining why this passage needs changing in light of the reference material]
+SUGGESTION: "[the revised replacement text]"
+
+Rules:
+- PASSAGE must be a verbatim copy of text that exists in the chapter above. Do not paraphrase.
+- Include as many ISSUE/PASSAGE/PROBLEM/SUGGESTION blocks as are genuinely warranted.
+- After all structured blocks, you may add a brief overall summary.
+---`
   }
 
   return prompt

@@ -1,9 +1,12 @@
 import type { TextAnnotation, AnnotationType } from '../types/editor'
 
-// Attempt to locate AI-quoted text in the document and create highlight annotations
+// Attempt to locate AI-quoted text in the document and create highlight annotations.
+// Pass `overrideType` to force every resulting annotation to use that type (e.g. 'custom'
+// for attachment-driven feedback) instead of inferring it from surrounding context.
 export function parseAnnotationsFromAIResponse(
   aiResponse: string,
-  documentContent: string
+  documentContent: string,
+  overrideType?: AnnotationType
 ): TextAnnotation[] {
   const annotations: TextAnnotation[] = []
   let id = 0
@@ -33,10 +36,11 @@ export function parseAnnotationsFromAIResponse(
     )
     if (alreadyAnnotated) continue
 
-    // Determine annotation type from context around the quote in the AI response
+    // Determine annotation type — use override when provided (e.g. 'custom' for
+    // attachment-driven feedback), otherwise infer from context around the quote.
     const contextStart = Math.max(0, match.index - 200)
     const contextBefore = aiResponse.slice(contextStart, match.index).toLowerCase()
-    const type = classifyType(contextBefore)
+    const type = overrideType ?? classifyType(contextBefore)
 
     // Try to extract a suggestion from text after the quote
     const afterQuote = aiResponse.slice(match.index + match[0].length, match.index + match[0].length + 400)

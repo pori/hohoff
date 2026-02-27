@@ -21,7 +21,7 @@ export interface ChatMessage {
   attachments?: AttachmentMeta[] // metadata only — stored in history for display
 }
 
-export type AnnotationType = 'passive_voice' | 'consistency' | 'style' | 'critique'
+export type AnnotationType = 'passive_voice' | 'consistency' | 'style' | 'critique' | 'custom'
 
 export interface TextAnnotation {
   id: string

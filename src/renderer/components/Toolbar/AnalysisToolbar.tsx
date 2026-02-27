@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useEditorStore } from '../../store/editorStore'
 import { detectPassiveVoice } from '../../utils/passiveVoice'
 import { parseAnnotationsFromAIResponse } from '../../utils/annotationParser'
+import { tooltipAnalysisCache } from '../Editor/MarkdownEditor'
 import './Toolbar.css'
 
 function countWords(text: string): number {
@@ -167,7 +168,7 @@ export function AnalysisToolbar(): JSX.Element {
         {annotations.length > 0 && (
           <button
             className="toolbar-btn toolbar-btn-clear"
-            onClick={clearAnnotations}
+            onClick={() => { clearAnnotations(); tooltipAnalysisCache.clear() }}
             title="Remove all highlights"
           >
             Clear
