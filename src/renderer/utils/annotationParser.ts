@@ -10,6 +10,7 @@ export function parseAnnotationsFromAIResponse(
 ): TextAnnotation[] {
   const annotations: TextAnnotation[] = []
   let id = 0
+  const runId = Date.now()
 
   // Match quoted strings — handles "straight", "curly", and 'single' quotes
   // Minimum 10 chars to avoid matching short words
@@ -50,7 +51,7 @@ export function parseAnnotationsFromAIResponse(
     const message = extractMessage(aiResponse, match.index)
 
     annotations.push({
-      id: `ai-${id++}`,
+      id: `ai-${runId}-${id++}`,
       type,
       from: docIndex,
       to: docIndex + quotedText.length,

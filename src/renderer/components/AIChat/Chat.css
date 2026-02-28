@@ -475,3 +475,69 @@
 .chat-send-btn:not(:disabled):hover {
   opacity: 0.85;
 }
+
+/* ── Suggestion summary block inside assistant messages ─── */
+.chat-message-suggestions {
+  margin-top: 6px;
+  border-top: 1px solid var(--border);
+  padding-top: 7px;
+}
+
+.chat-suggestions-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 5px;
+}
+
+.chat-suggestion-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chat-suggestion-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.chat-suggestion-badge {
+  display: inline-block;
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.chat-suggestion-excerpt {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-suggestion-applied {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #1a1208;
+  background: rgba(30, 200, 120, 0.85);
+  border-radius: 3px;
+  padding: 1px 5px;
+  flex-shrink: 0;
+}

@@ -155,11 +155,11 @@ export function scrollToAnnotation(ann: TextAnnotation): void {
   })
 }
 
-// Apply a suggestion to the document and remove that annotation
+// Apply a suggestion to the document and mark that annotation as applied
 export function applyAnnotation(ann: TextAnnotation, suggestion: string): void {
   const view = currentEditorView
   if (!view) return
-  const { annotations: anns, setAnnotations } = useEditorStore.getState()
+  const { annotations: anns, markAnnotationApplied } = useEditorStore.getState()
   const changeSpec = { from: ann.from, to: ann.to, insert: suggestion }
   // Map surviving annotation positions through the text change so
   // their from/to reflect the new document offsets.
@@ -173,7 +173,9 @@ export function applyAnnotation(ann: TextAnnotation, suggestion: string): void {
     changes: changeSpec,
     effects: setAnnotationsEffect.of(remaining)
   })
-  setAnnotations(remaining)
+  // Mark as applied in annotationsByFile (preserves it for chat history) and
+  // remove from the active annotations list.
+  markAnnotationApplied(ann.id)
   tooltipAnalysisCache.delete(ann.id)
 }
 

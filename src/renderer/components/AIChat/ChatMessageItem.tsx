@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
-import type { ChatMessage } from '../../types/editor'
+import type { ChatMessage, TextAnnotation } from '../../types/editor'
 
 marked.setOptions({ breaks: true })
 
@@ -11,11 +11,22 @@ function attachmentIcon(mimeType: string): string {
   return '📝'
 }
 
-interface Props {
-  message: ChatMessage
+function badgeColor(type: TextAnnotation['type']): string {
+  switch (type) {
+    case 'passive_voice': return 'rgba(255, 200, 0, 0.75)'
+    case 'consistency':   return 'rgba(220, 80, 80, 0.75)'
+    case 'style':         return 'rgba(80, 160, 255, 0.75)'
+    case 'critique':      return 'rgba(160, 80, 220, 0.75)'
+    case 'custom':        return 'rgba(30, 200, 150, 0.8)'
+  }
 }
 
-export function ChatMessageItem({ message }: Props): JSX.Element {
+interface Props {
+  message: ChatMessage
+  linkedAnnotations?: TextAnnotation[]
+}
+
+export function ChatMessageItem({ message, linkedAnnotations }: Props): JSX.Element {
   const html = useMemo(() => {
     if (message.role !== 'assistant' || !message.content) return null
     const raw = marked.parse(message.content) as string
@@ -47,6 +58,34 @@ export function ChatMessageItem({ message }: Props): JSX.Element {
           message.content || <span className="chat-streaming-cursor">▍</span>
         )}
       </div>
+
+      {linkedAnnotations && linkedAnnotations.length > 0 && (
+        <div className="chat-message-suggestions">
+          <span className="chat-suggestions-label">
+            {linkedAnnotations.length} suggestion{linkedAnnotations.length !== 1 ? 's' : ''} created
+          </span>
+          <div className="chat-suggestion-list">
+            {linkedAnnotations.map(ann => (
+              <div key={ann.id} className="chat-suggestion-row">
+                <span
+                  className="chat-suggestion-badge"
+                  style={{ backgroundColor: badgeColor(ann.type) }}
+                >
+                  {ann.type.replace(/_/g, ' ')}
+                </span>
+                <span className="chat-suggestion-excerpt">
+                  "{ann.matchedText.length > 40
+                    ? ann.matchedText.slice(0, 38) + '…'
+                    : ann.matchedText}"
+                </span>
+                {ann.applied && (
+                  <span className="chat-suggestion-applied">Applied</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

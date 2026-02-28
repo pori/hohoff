@@ -37,6 +37,8 @@ interface EditorState {
   setAnnotations: (annotations: TextAnnotation[]) => void
   removeAnnotation: (id: string) => void
   clearAnnotations: () => void
+  markAnnotationApplied: (id: string) => void
+  linkAnnotationsToMessage: (messageId: string, annotationIds: string[]) => void
 
   // Analysis mode
   analysisMode: AnalysisMode
@@ -133,7 +135,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       activeFileContent: content,
       isDirty: false,
       chatHistory: existing,
-      annotations: savedAnnotationState?.annotations ?? [],
+      annotations: savedAnnotationState?.annotations.filter(a => !a.applied) ?? [],
       analysisMode: savedAnnotationState?.mode ?? 'none'
     })
     scheduleSave(() => {
@@ -238,8 +240,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   annotationsByFile: {},
   setAnnotations: (annotations) => {
     set((s) => {
+      // Preserve previously applied annotations so chat history links remain valid
+      const existingApplied = s.activeFilePath
+        ? (s.annotationsByFile[s.activeFilePath]?.annotations ?? []).filter(a => a.applied)
+        : []
+      const merged = [...existingApplied, ...annotations]
       const annotationsByFile = s.activeFilePath
-        ? { ...s.annotationsByFile, [s.activeFilePath]: { mode: s.analysisMode, annotations } }
+        ? { ...s.annotationsByFile, [s.activeFilePath]: { mode: s.analysisMode, annotations: merged } }
         : s.annotationsByFile
       return { annotations, annotationsByFile }
     })
@@ -277,6 +284,53 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         ? { ...s.annotationsByFile, [s.activeFilePath]: { mode: 'none' as AnalysisMode, annotations: [] } }
         : s.annotationsByFile
       return { annotations: [], analysisMode: 'none', annotationsByFile }
+    })
+    scheduleSave(() => {
+      const st = get()
+      return {
+        activeFilePath: st.activeFilePath,
+        scrollPositions: st.scrollPositions,
+        chatHistoryByFile: st.chatHistoryByFile,
+        annotationsByFile: st.annotationsByFile
+      }
+    })
+  },
+
+  markAnnotationApplied: (id) => {
+    set((s) => {
+      if (!s.activeFilePath) return {}
+      const fileState = s.annotationsByFile[s.activeFilePath]
+      if (!fileState) return {}
+      const updatedAll = fileState.annotations.map(a =>
+        a.id === id ? { ...a, applied: true } : a
+      )
+      const annotationsByFile = {
+        ...s.annotationsByFile,
+        [s.activeFilePath]: { ...fileState, annotations: updatedAll }
+      }
+      const annotations = s.annotations.filter(a => a.id !== id)
+      return { annotations, annotationsByFile }
+    })
+    scheduleSave(() => {
+      const st = get()
+      return {
+        activeFilePath: st.activeFilePath,
+        scrollPositions: st.scrollPositions,
+        chatHistoryByFile: st.chatHistoryByFile,
+        annotationsByFile: st.annotationsByFile
+      }
+    })
+  },
+
+  linkAnnotationsToMessage: (messageId, annotationIds) => {
+    set((s) => {
+      const history = s.chatHistory.map(m =>
+        m.id === messageId ? { ...m, annotationIds } : m
+      )
+      const byFile = s.activeFilePath
+        ? { ...s.chatHistoryByFile, [s.activeFilePath]: history }
+        : s.chatHistoryByFile
+      return { chatHistory: history, chatHistoryByFile: byFile }
     })
     scheduleSave(() => {
       const st = get()

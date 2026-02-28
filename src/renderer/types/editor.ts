@@ -19,6 +19,7 @@ export interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
   attachments?: AttachmentMeta[] // metadata only — stored in history for display
+  annotationIds?: string[] // IDs of suggestions this message produced
 }
 
 export type AnnotationType = 'passive_voice' | 'consistency' | 'style' | 'critique' | 'custom'
@@ -31,6 +32,7 @@ export interface TextAnnotation {
   matchedText: string
   message: string
   suggestion?: string
+  applied?: boolean // true when the suggestion has been applied to the document
 }
 
 export type AnalysisMode = 'none' | 'passive_voice' | 'consistency' | 'style' | 'critique'

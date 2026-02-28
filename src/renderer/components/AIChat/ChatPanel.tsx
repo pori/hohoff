@@ -4,7 +4,7 @@ import { ChatMessageItem } from './ChatMessageItem'
 import { ChatInput } from './ChatInput'
 import { FeedbackPanel } from '../Feedback/FeedbackPanel'
 import { parseAnnotationsFromAIResponse } from '../../utils/annotationParser'
-import type { Attachment } from '../../types/editor'
+import type { Attachment, TextAnnotation } from '../../types/editor'
 import './Chat.css'
 
 type TabId = 'chat' | 'feedback'
@@ -18,12 +18,14 @@ export function ChatPanel(): JSX.Element {
     activeFilePath,
     analysisMode,
     annotations,
+    annotationsByFile,
     addUserMessage,
     startAssistantMessage,
     appendToLastAssistantMessage,
     setAILoading,
     setAIError,
     setAnnotations,
+    linkAnnotationsToMessage,
     clearChat
   } = useEditorStore()
 
@@ -78,6 +80,7 @@ export function ChatPanel(): JSX.Element {
         const parsed = parseAnnotationsFromAIResponse(lastMsg.content, activeFileContent, overrideType)
         if (parsed.length > 0) {
           setAnnotations(parsed)
+          linkAnnotationsToMessage(lastMsg.id, parsed.map(a => a.id))
         }
       }
     } catch (err) {
@@ -97,6 +100,8 @@ export function ChatPanel(): JSX.Element {
   }, [chatHistory])
 
   const hasFile = Boolean(activeFilePath)
+  const allAnnotationsForFile: TextAnnotation[] =
+    (activeFilePath ? annotationsByFile[activeFilePath]?.annotations : undefined) ?? []
 
   return (
     <div className="chat-panel">
@@ -148,9 +153,18 @@ export function ChatPanel(): JSX.Element {
                 Ask anything about the current chapter — passive voice, plot, character, style...
               </p>
             )}
-            {chatHistory.map((msg) => (
-              <ChatMessageItem key={msg.id} message={msg} />
-            ))}
+            {chatHistory.map((msg) => {
+              const linkedAnnotations = (msg.annotationIds ?? [])
+                .map(id => allAnnotationsForFile.find(a => a.id === id))
+                .filter((a): a is TextAnnotation => a !== undefined)
+              return (
+                <ChatMessageItem
+                  key={msg.id}
+                  message={msg}
+                  linkedAnnotations={linkedAnnotations}
+                />
+              )
+            })}
             {isAILoading && chatHistory[chatHistory.length - 1]?.content === '' && (
               <div className="chat-typing">
                 <span />
