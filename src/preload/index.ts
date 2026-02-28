@@ -81,5 +81,8 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.invoke('fs:createFile', parentPath, name),
 
   createDir: (parentPath: string, name: string): Promise<string> =>
-    ipcRenderer.invoke('fs:createDir', parentPath, name)
+    ipcRenderer.invoke('fs:createDir', parentPath, name),
+
+  moveFile: (sourcePath: string, targetDirPath: string): Promise<string> =>
+    ipcRenderer.invoke('fs:move', sourcePath, targetDirPath)
 })

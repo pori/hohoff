@@ -90,7 +90,10 @@
 }
 
 .tree-dir-header.drag-over {
-  box-shadow: inset 0 -2px 0 var(--accent);
+  background: var(--active-bg);
+  color: var(--text-primary);
+  outline: 1px solid var(--accent);
+  outline-offset: -2px;
 }
 
 /* ── Inline rename / create input ─────────────────────────────────────── */

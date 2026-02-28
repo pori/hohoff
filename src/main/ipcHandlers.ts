@@ -1,7 +1,7 @@
 import { ipcMain, dialog, BrowserWindow } from 'electron'
 import { readFileSync } from 'fs'
 import { extname, basename } from 'path'
-import { listDraftFiles, readMarkdownFile, writeMarkdownFile, getProjectWordCount, saveOrderFile, readSession, writeSession, saveRevision, listRevisions, loadRevision, deleteRevision, renameFileOrDir, deleteFileOrDir, createMarkdownFile, createSubdirectory } from './fileSystem'
+import { listDraftFiles, readMarkdownFile, writeMarkdownFile, getProjectWordCount, saveOrderFile, readSession, writeSession, saveRevision, listRevisions, loadRevision, deleteRevision, renameFileOrDir, deleteFileOrDir, createMarkdownFile, createSubdirectory, moveFileOrDir } from './fileSystem'
 import { streamMessage } from './aiService'
 import type { AIPayload, Attachment } from '../renderer/types/editor'
 
@@ -64,6 +64,10 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('fs:createDir', async (_event, parentPath: string, name: string) => {
     return await createSubdirectory(parentPath, name)
+  })
+
+  ipcMain.handle('fs:move', async (_event, sourcePath: string, targetDirPath: string) => {
+    return await moveFileOrDir(sourcePath, targetDirPath)
   })
 
   ipcMain.handle('fs:pickAttachments', async (event): Promise<Attachment[]> => {

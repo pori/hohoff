@@ -3,7 +3,7 @@ import { EditorView, Decoration, type DecorationSet, hoverTooltip, keymap } from
 import { EditorState, StateField, StateEffect, Annotation, RangeSetBuilder, Compartment, Transaction } from '@codemirror/state'
 import { markdown } from '@codemirror/lang-markdown'
 import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
-import { history, defaultKeymap, historyKeymap, invertedEffects, selectAll } from '@codemirror/commands'
+import { history, defaultKeymap, historyKeymap, invertedEffects, selectAll, indentLess } from '@codemirror/commands'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import { useEditorStore } from '../../store/editorStore'
@@ -375,7 +375,18 @@ export function MarkdownEditor(): JSX.Element {
         doc: '',
         extensions: [
           history(),
-          keymap.of([...defaultKeymap, ...historyKeymap]),
+          keymap.of([
+            {
+              key: 'Tab',
+              run: (view) => {
+                view.dispatch(view.state.replaceSelection('  '))
+                return true
+              }
+            },
+            { key: 'Shift-Tab', run: indentLess },
+            ...defaultKeymap,
+            ...historyKeymap
+          ]),
           markdown(),
           syntaxHighlighting(defaultHighlightStyle),
           rawAnnotationsField,

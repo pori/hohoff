@@ -7,6 +7,8 @@ import type { MenuItem } from './ContextMenu'
 interface DndPayload {
   name: string
   dirPath: string
+  sourcePath: string
+  nodeType: 'file' | 'directory'
 }
 
 interface Props {
@@ -34,8 +36,12 @@ export function FileTreeNode({ node, depth, dirPath, siblings }: Props): JSX.Ele
   }
 
   function handleDragStart(e: React.DragEvent<HTMLElement>): void {
+    e.stopPropagation()
     e.dataTransfer.effectAllowed = 'move'
-    e.dataTransfer.setData('dnd', JSON.stringify({ name: node.name, dirPath } satisfies DndPayload))
+    e.dataTransfer.setData(
+      'dnd',
+      JSON.stringify({ name: node.name, dirPath, sourcePath: node.path, nodeType: node.type } satisfies DndPayload)
+    )
     e.currentTarget.classList.add('dragging')
   }
 
@@ -53,17 +59,45 @@ export function FileTreeNode({ node, depth, dirPath, siblings }: Props): JSX.Ele
     e.currentTarget.classList.remove('drag-over')
   }
 
+  async function handleMoveIntoDir(sourcePath: string, targetDirPath: string): Promise<void> {
+    try {
+      const newPath = await window.api.moveFile(sourcePath, targetDirPath)
+      if (activeFilePath === sourcePath) {
+        const content = await window.api.readFile(newPath)
+        setActiveFile(newPath, content)
+      }
+      await refreshTree()
+    } catch (err) {
+      console.error('Move failed:', err)
+    }
+  }
+
   function handleDrop(e: React.DragEvent<HTMLElement>): void {
     e.preventDefault()
+    e.stopPropagation()
     e.currentTarget.classList.remove('drag-over')
     const raw = e.dataTransfer.getData('dnd')
     if (!raw) return
     const payload: DndPayload = JSON.parse(raw)
-    if (payload.dirPath !== dirPath) return
-    const fromIdx = siblings.findIndex((n) => n.name === payload.name)
-    const toIdx = siblings.findIndex((n) => n.name === node.name)
-    if (fromIdx !== -1 && toIdx !== -1 && fromIdx !== toIdx) {
-      moveNode(dirPath, fromIdx, toIdx)
+
+    if (node.type === 'directory') {
+      // Drop ON a directory = move INTO it
+      if (payload.sourcePath === node.path) return
+      if (payload.dirPath === node.path) return
+      if (payload.nodeType === 'directory' && node.path.startsWith(payload.sourcePath + '/')) return
+      void handleMoveIntoDir(payload.sourcePath, node.path)
+    } else {
+      if (payload.dirPath === dirPath) {
+        // Same parent — reorder
+        const fromIdx = siblings.findIndex((n) => n.name === payload.name)
+        const toIdx = siblings.findIndex((n) => n.name === node.name)
+        if (fromIdx !== -1 && toIdx !== -1 && fromIdx !== toIdx) {
+          moveNode(dirPath, fromIdx, toIdx)
+        }
+      } else {
+        // Different parent — move to this file's parent directory
+        void handleMoveIntoDir(payload.sourcePath, dirPath)
+      }
     }
   }
 

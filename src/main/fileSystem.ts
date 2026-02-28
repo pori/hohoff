@@ -1,5 +1,5 @@
 import { readdir, readFile, writeFile, mkdir, unlink, rename as fsRename, rm } from 'fs/promises'
-import { join, dirname } from 'path'
+import { join, dirname, basename } from 'path'
 import type { FileNode, RevisionMeta } from '../renderer/types/editor'
 
 const DRAFT_ROOT =
@@ -248,4 +248,15 @@ export async function createSubdirectory(parentPath: string, name: string): Prom
   assertInDraftRoot(newDir)
   await mkdir(newDir, { recursive: true })
   return newDir
+}
+
+export async function moveFileOrDir(sourcePath: string, targetDirPath: string): Promise<string> {
+  assertInDraftRoot(sourcePath)
+  const destDir = targetDirPath === '__root__' ? DRAFT_ROOT : targetDirPath
+  assertInDraftRoot(destDir)
+  const newPath = join(destDir, basename(sourcePath))
+  assertInDraftRoot(newPath)
+  if (newPath === sourcePath) return sourcePath
+  await fsRename(sourcePath, newPath)
+  return newPath
 }
