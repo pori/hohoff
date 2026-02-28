@@ -317,7 +317,7 @@ function buildTheme(fontSize: number, dark: boolean): ReturnType<typeof EditorVi
     '.cm-cursor': { borderLeftColor: 'var(--accent)' },
     '.cm-selectionBackground': { backgroundColor: 'var(--active-bg)' },
     '&.cm-focused .cm-selectionBackground': { backgroundColor: 'var(--active-bg)' },
-    '.cm-line': { padding: '0', marginBottom: '14px' },
+    '.cm-line': { paddingBottom: '14px' },
     '.cm-gutters': { display: 'none' },
     '.cm-activeLine': { backgroundColor: 'transparent' },
     '.cm-activeLineGutter': { backgroundColor: 'transparent' },
