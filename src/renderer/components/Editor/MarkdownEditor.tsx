@@ -4,6 +4,7 @@ import { EditorState, StateField, StateEffect, Annotation, RangeSetBuilder, Comp
 import { markdown } from '@codemirror/lang-markdown'
 import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
 import { history, defaultKeymap, historyKeymap, invertedEffects, selectAll, indentLess } from '@codemirror/commands'
+import { search, searchKeymap } from '@codemirror/search'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import { useEditorStore } from '../../store/editorStore'
@@ -375,6 +376,7 @@ export function MarkdownEditor(): JSX.Element {
         doc: '',
         extensions: [
           history(),
+          search({ top: true }),
           keymap.of([
             {
               key: 'Tab',
@@ -384,6 +386,7 @@ export function MarkdownEditor(): JSX.Element {
               }
             },
             { key: 'Shift-Tab', run: indentLess },
+            ...searchKeymap,
             ...defaultKeymap,
             ...historyKeymap
           ]),
