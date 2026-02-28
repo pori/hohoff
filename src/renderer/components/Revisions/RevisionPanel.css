@@ -188,3 +188,144 @@
 .revision-restore-btn:hover {
   background: var(--accent-hover);
 }
+
+/* ─── View mode toggle (Diff | Preview) ─────────────────────────────────── */
+.revision-view-toggle {
+  display: flex;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--toolbar-bg);
+  padding: 0 16px;
+  gap: 2px;
+}
+
+.revision-view-btn {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 8px 10px 6px;
+  cursor: pointer;
+  margin-bottom: -1px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.revision-view-btn:hover {
+  color: var(--text-secondary);
+}
+
+.revision-view-btn.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* ─── Shared scroll container ────────────────────────────────────────────── */
+.revision-preview-scroll {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* ─── Diff renderer ──────────────────────────────────────────────────────── */
+.rdiff-root {
+  font-family: var(--font-serif);
+  font-size: 13px;
+  line-height: 1.75;
+  padding: 12px 0;
+}
+
+.rdiff-line {
+  display: flex;
+  align-items: baseline;
+  min-height: 1.75em;
+  padding-right: 16px;
+  word-break: break-word;
+}
+
+.rdiff-gutter {
+  flex-shrink: 0;
+  width: 24px;
+  text-align: center;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 700;
+  user-select: none;
+  padding-top: 2px;
+}
+
+.rdiff-text {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Added lines (in current, not in revision) */
+.rdiff-line--added {
+  background: rgba(80, 160, 80, 0.13);
+}
+
+.rdiff-line--added .rdiff-gutter {
+  color: #6abf6a;
+}
+
+.rdiff-line--added .rdiff-text {
+  color: var(--text-primary);
+}
+
+/* Removed lines (in revision, not in current) */
+.rdiff-line--removed {
+  background: rgba(180, 60, 60, 0.12);
+}
+
+.rdiff-line--removed .rdiff-gutter {
+  color: #c07070;
+}
+
+.rdiff-line--removed .rdiff-text {
+  color: var(--text-muted);
+  text-decoration: line-through;
+  text-decoration-color: rgba(180, 60, 60, 0.45);
+}
+
+/* Unchanged context lines */
+.rdiff-line--context .rdiff-gutter {
+  color: transparent;
+}
+
+.rdiff-line--context .rdiff-text {
+  color: var(--text-muted);
+}
+
+/* Changed hunk group */
+.rdiff-hunk {
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  margin: 1px 0;
+}
+
+/* Expand collapsed context */
+.rdiff-collapse-btn {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  border-top: 1px dashed var(--border);
+  border-bottom: 1px dashed var(--border);
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  text-align: center;
+  padding: 5px 0;
+  cursor: pointer;
+  letter-spacing: 0.03em;
+  transition: color 0.15s, background 0.15s;
+}
+
+.rdiff-collapse-btn:hover {
+  color: var(--text-secondary);
+  background: var(--hover-bg);
+}

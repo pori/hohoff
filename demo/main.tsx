@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { useEditorStore } from '@renderer/store/editorStore'
 import { MarkdownEditor } from '@renderer/components/Editor/MarkdownEditor'
 import { ChatPanel } from '@renderer/components/AIChat/ChatPanel'
+import { RevisionPanel } from '@renderer/components/Revisions/RevisionPanel'
 import '@renderer/styles/global.css'
 import '@renderer/styles/app.css'
 
@@ -69,7 +70,7 @@ store.setAnnotations([
 ])
 
 function DemoApp(): JSX.Element {
-  const [revActive, setRevActive] = useState(false)
+  const { revisionPanelOpen, toggleRevisionPanel } = useEditorStore()
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg-base)' }}>
       {/* Titlebar – same markup as App.tsx */}
@@ -83,8 +84,8 @@ function DemoApp(): JSX.Element {
           </div>
           <div className="app-titlebar-icon-group">
             <button
-              className={`app-titlebar-theme-btn app-titlebar-revision-btn${revActive ? ' active' : ''}`}
-              onClick={() => setRevActive(v => !v)}
+              className={`app-titlebar-theme-btn app-titlebar-revision-btn${revisionPanelOpen ? ' active' : ''}`}
+              onClick={toggleRevisionPanel}
               title="Revision history"
             >⟳</button>
             <button className="app-titlebar-theme-btn" title="Toggle theme">☀</button>
@@ -93,8 +94,9 @@ function DemoApp(): JSX.Element {
       </div>
       {/* Editor content below */}
       <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', position: 'relative' }}>
           <MarkdownEditor />
+          {revisionPanelOpen && <RevisionPanel />}
         </div>
         <div style={{ width: '300px', flexShrink: 0 }}>
           <ChatPanel />
