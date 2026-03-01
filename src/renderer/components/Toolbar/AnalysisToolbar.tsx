@@ -30,6 +30,7 @@ export function AnalysisToolbar(): JSX.Element {
     appendToLastAssistantMessage,
     setAILoading,
     setAIError,
+    linkAnnotationsToMessage,
     chatHistory,
     projectWordCount,
     setProjectWordCount,
@@ -99,6 +100,7 @@ export function AnalysisToolbar(): JSX.Element {
         if (newAnnotations.length > 0) {
           const existing = useEditorStore.getState().annotations.filter((a) => a.type !== mode)
           setAnnotations([...existing, ...newAnnotations])
+          linkAnnotationsToMessage(lastMsg.id, newAnnotations.map(a => a.id))
         }
       }
     } catch (err) {
