@@ -22,6 +22,12 @@ export interface ChatMessage {
   annotationIds?: string[] // IDs of suggestions this message produced
 }
 
+export interface ChatSession {
+  id: string
+  createdAt: number
+  messages: ChatMessage[]
+}
+
 export type AnnotationType = 'passive_voice' | 'consistency' | 'style' | 'critique' | 'custom'
 
 export interface TextAnnotation {

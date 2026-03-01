@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { FileNode, ChatMessage, TextAnnotation, AnalysisMode, RevisionMeta, AttachmentMeta } from '../types/editor'
+import type { FileNode, ChatMessage, ChatSession, TextAnnotation, AnalysisMode, RevisionMeta, AttachmentMeta } from '../types/editor'
 
 interface AnnotationFileState {
   mode: AnalysisMode
@@ -19,8 +19,9 @@ interface EditorState {
   setContent: (content: string) => void
   markSaved: () => void
 
-  // Chat - persisted per file path
-  chatHistoryByFile: Record<string, ChatMessage[]>
+  // Chat - persisted per file path, multiple sessions per file
+  chatSessionsByFile: Record<string, ChatSession[]>
+  activeSessionIdByFile: Record<string, string>
   chatHistory: ChatMessage[]
   isAILoading: boolean
   aiError: string | null
@@ -29,7 +30,8 @@ interface EditorState {
   appendToLastAssistantMessage: (chunk: string) => void
   setAILoading: (loading: boolean) => void
   setAIError: (error: string | null) => void
-  clearChat: () => void
+  newChat: () => void
+  setActiveSession: (sessionId: string) => void
 
   // Annotations (highlights in editor) — also persisted per file
   annotations: TextAnnotation[]
@@ -128,7 +130,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   isDirty: false,
   setActiveFile: (path, content) => {
     const s = get()
-    const existing = s.chatHistoryByFile[path] ?? []
+    const sessions = s.chatSessionsByFile[path] ?? []
+    const activeId = s.activeSessionIdByFile[path]
+    const activeSession = sessions.find(sess => sess.id === activeId) ?? sessions[sessions.length - 1]
+    const existing = activeSession?.messages ?? []
     const savedAnnotationState = s.annotationsByFile[path]
     set({
       activeFilePath: path,
@@ -143,7 +148,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       return {
         activeFilePath: st.activeFilePath,
         scrollPositions: st.scrollPositions,
-        chatHistoryByFile: st.chatHistoryByFile,
+        chatSessionsByFile: st.chatSessionsByFile,
+        activeSessionIdByFile: st.activeSessionIdByFile,
         annotationsByFile: st.annotationsByFile
       }
     })
@@ -151,7 +157,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setContent: (content) => set({ activeFileContent: content, isDirty: true }),
   markSaved: () => set({ isDirty: false }),
 
-  chatHistoryByFile: {},
+  chatSessionsByFile: {},
+  activeSessionIdByFile: {},
   chatHistory: [],
   isAILoading: false,
   aiError: null,
@@ -160,17 +167,30 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const msg: ChatMessage = { id: `user-${Date.now()}`, role: 'user', content: text, attachments }
     set((s) => {
       const history = [...s.chatHistory, msg]
-      const byFile = s.activeFilePath
-        ? { ...s.chatHistoryByFile, [s.activeFilePath]: history }
-        : s.chatHistoryByFile
-      return { chatHistory: history, chatHistoryByFile: byFile }
+      if (!s.activeFilePath) return { chatHistory: history }
+      let sessions = s.chatSessionsByFile[s.activeFilePath] ?? []
+      let activeId = s.activeSessionIdByFile[s.activeFilePath]
+      // If no session exists yet, create the first one
+      if (sessions.length === 0 || !activeId) {
+        const newSession: ChatSession = { id: `session-${Date.now()}`, createdAt: Date.now(), messages: history }
+        return {
+          chatHistory: history,
+          chatSessionsByFile: { ...s.chatSessionsByFile, [s.activeFilePath]: [newSession] },
+          activeSessionIdByFile: { ...s.activeSessionIdByFile, [s.activeFilePath]: newSession.id }
+        }
+      }
+      const updatedSessions = sessions.map(sess =>
+        sess.id === activeId ? { ...sess, messages: history } : sess
+      )
+      return { chatHistory: history, chatSessionsByFile: { ...s.chatSessionsByFile, [s.activeFilePath]: updatedSessions } }
     })
     scheduleSave(() => {
       const st = get()
       return {
         activeFilePath: st.activeFilePath,
         scrollPositions: st.scrollPositions,
-        chatHistoryByFile: st.chatHistoryByFile,
+        chatSessionsByFile: st.chatSessionsByFile,
+        activeSessionIdByFile: st.activeSessionIdByFile,
         annotationsByFile: st.annotationsByFile
       }
     })
@@ -180,10 +200,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const msg: ChatMessage = { id: `asst-${Date.now()}`, role: 'assistant', content: '' }
     set((s) => {
       const history = [...s.chatHistory, msg]
-      const byFile = s.activeFilePath
-        ? { ...s.chatHistoryByFile, [s.activeFilePath]: history }
-        : s.chatHistoryByFile
-      return { chatHistory: history, chatHistoryByFile: byFile }
+      if (!s.activeFilePath) return { chatHistory: history }
+      const activeId = s.activeSessionIdByFile[s.activeFilePath]
+      const sessions = (s.chatSessionsByFile[s.activeFilePath] ?? []).map(sess =>
+        sess.id === activeId ? { ...sess, messages: history } : sess
+      )
+      return { chatHistory: history, chatSessionsByFile: { ...s.chatSessionsByFile, [s.activeFilePath]: sessions } }
     })
   },
 
@@ -194,10 +216,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       if (last?.role === 'assistant') {
         history[history.length - 1] = { ...last, content: last.content + chunk }
       }
-      const byFile = s.activeFilePath
-        ? { ...s.chatHistoryByFile, [s.activeFilePath]: history }
-        : s.chatHistoryByFile
-      return { chatHistory: history, chatHistoryByFile: byFile }
+      if (!s.activeFilePath) return { chatHistory: history }
+      const activeId = s.activeSessionIdByFile[s.activeFilePath]
+      const sessions = (s.chatSessionsByFile[s.activeFilePath] ?? []).map(sess =>
+        sess.id === activeId ? { ...sess, messages: history } : sess
+      )
+      return { chatHistory: history, chatSessionsByFile: { ...s.chatSessionsByFile, [s.activeFilePath]: sessions } }
     })
   },
 
@@ -210,7 +234,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         return {
           activeFilePath: st.activeFilePath,
           scrollPositions: st.scrollPositions,
-          chatHistoryByFile: st.chatHistoryByFile,
+          chatSessionsByFile: st.chatSessionsByFile,
+          activeSessionIdByFile: st.activeSessionIdByFile,
           annotationsByFile: st.annotationsByFile
         }
       })
@@ -218,20 +243,37 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
   setAIError: (aiError) => set({ aiError }),
 
-  clearChat: () => {
+  newChat: () => {
     set((s) => {
-      const byFile = s.activeFilePath
-        ? { ...s.chatHistoryByFile, [s.activeFilePath]: [] }
-        : s.chatHistoryByFile
-      return { chatHistory: [], chatHistoryByFile: byFile }
+      if (!s.activeFilePath) return {}
+      const newSession: ChatSession = { id: `session-${Date.now()}`, createdAt: Date.now(), messages: [] }
+      const existingSessions = s.chatSessionsByFile[s.activeFilePath] ?? []
+      return {
+        chatSessionsByFile: { ...s.chatSessionsByFile, [s.activeFilePath]: [...existingSessions, newSession] },
+        activeSessionIdByFile: { ...s.activeSessionIdByFile, [s.activeFilePath]: newSession.id },
+        chatHistory: []
+      }
     })
     scheduleSave(() => {
       const st = get()
       return {
         activeFilePath: st.activeFilePath,
         scrollPositions: st.scrollPositions,
-        chatHistoryByFile: st.chatHistoryByFile,
+        chatSessionsByFile: st.chatSessionsByFile,
+        activeSessionIdByFile: st.activeSessionIdByFile,
         annotationsByFile: st.annotationsByFile
+      }
+    })
+  },
+
+  setActiveSession: (sessionId: string) => {
+    set((s) => {
+      if (!s.activeFilePath) return {}
+      const session = (s.chatSessionsByFile[s.activeFilePath] ?? []).find(sess => sess.id === sessionId)
+      if (!session) return {}
+      return {
+        activeSessionIdByFile: { ...s.activeSessionIdByFile, [s.activeFilePath]: sessionId },
+        chatHistory: session.messages
       }
     })
   },
@@ -255,7 +297,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       return {
         activeFilePath: st.activeFilePath,
         scrollPositions: st.scrollPositions,
-        chatHistoryByFile: st.chatHistoryByFile,
+        chatSessionsByFile: st.chatSessionsByFile,
+        activeSessionIdByFile: st.activeSessionIdByFile,
         annotationsByFile: st.annotationsByFile
       }
     })
@@ -273,7 +316,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       return {
         activeFilePath: st.activeFilePath,
         scrollPositions: st.scrollPositions,
-        chatHistoryByFile: st.chatHistoryByFile,
+        chatSessionsByFile: st.chatSessionsByFile,
+        activeSessionIdByFile: st.activeSessionIdByFile,
         annotationsByFile: st.annotationsByFile
       }
     })
@@ -290,7 +334,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       return {
         activeFilePath: st.activeFilePath,
         scrollPositions: st.scrollPositions,
-        chatHistoryByFile: st.chatHistoryByFile,
+        chatSessionsByFile: st.chatSessionsByFile,
+        activeSessionIdByFile: st.activeSessionIdByFile,
         annotationsByFile: st.annotationsByFile
       }
     })
@@ -316,7 +361,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       return {
         activeFilePath: st.activeFilePath,
         scrollPositions: st.scrollPositions,
-        chatHistoryByFile: st.chatHistoryByFile,
+        chatSessionsByFile: st.chatSessionsByFile,
+        activeSessionIdByFile: st.activeSessionIdByFile,
         annotationsByFile: st.annotationsByFile
       }
     })
@@ -327,17 +373,20 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const history = s.chatHistory.map(m =>
         m.id === messageId ? { ...m, annotationIds } : m
       )
-      const byFile = s.activeFilePath
-        ? { ...s.chatHistoryByFile, [s.activeFilePath]: history }
-        : s.chatHistoryByFile
-      return { chatHistory: history, chatHistoryByFile: byFile }
+      if (!s.activeFilePath) return { chatHistory: history }
+      const activeId = s.activeSessionIdByFile[s.activeFilePath]
+      const sessions = (s.chatSessionsByFile[s.activeFilePath] ?? []).map(sess =>
+        sess.id === activeId ? { ...sess, messages: history } : sess
+      )
+      return { chatHistory: history, chatSessionsByFile: { ...s.chatSessionsByFile, [s.activeFilePath]: sessions } }
     })
     scheduleSave(() => {
       const st = get()
       return {
         activeFilePath: st.activeFilePath,
         scrollPositions: st.scrollPositions,
-        chatHistoryByFile: st.chatHistoryByFile,
+        chatSessionsByFile: st.chatSessionsByFile,
+        activeSessionIdByFile: st.activeSessionIdByFile,
         annotationsByFile: st.annotationsByFile
       }
     })
@@ -361,7 +410,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       return {
         activeFilePath: st.activeFilePath,
         scrollPositions: st.scrollPositions,
-        chatHistoryByFile: st.chatHistoryByFile,
+        chatSessionsByFile: st.chatSessionsByFile,
+        activeSessionIdByFile: st.activeSessionIdByFile,
         annotationsByFile: st.annotationsByFile
       }
     })
@@ -402,8 +452,23 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       if (data.scrollPositions && typeof data.scrollPositions === 'object') {
         patch.scrollPositions = data.scrollPositions as Record<string, number>
       }
-      if (data.chatHistoryByFile && typeof data.chatHistoryByFile === 'object') {
-        patch.chatHistoryByFile = data.chatHistoryByFile as Record<string, ChatMessage[]>
+      if (data.chatSessionsByFile && typeof data.chatSessionsByFile === 'object') {
+        patch.chatSessionsByFile = data.chatSessionsByFile as Record<string, ChatSession[]>
+        patch.activeSessionIdByFile = (data.activeSessionIdByFile as Record<string, string>) ?? {}
+      } else if (data.chatHistoryByFile && typeof data.chatHistoryByFile === 'object') {
+        // Migrate from old flat format — wrap each file's history in a single session
+        const legacy = data.chatHistoryByFile as Record<string, ChatMessage[]>
+        const sessions: Record<string, ChatSession[]> = {}
+        const activeIds: Record<string, string> = {}
+        for (const [path, messages] of Object.entries(legacy)) {
+          if (Array.isArray(messages) && messages.length > 0) {
+            const id = `session-migrated-${Date.now()}`
+            sessions[path] = [{ id, createdAt: Date.now(), messages }]
+            activeIds[path] = id
+          }
+        }
+        patch.chatSessionsByFile = sessions
+        patch.activeSessionIdByFile = activeIds
       }
       if (data.annotationsByFile && typeof data.annotationsByFile === 'object') {
         patch.annotationsByFile = data.annotationsByFile as Record<string, AnnotationFileState>

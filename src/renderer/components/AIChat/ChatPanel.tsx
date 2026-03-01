@@ -9,9 +9,23 @@ import './Chat.css'
 
 type TabId = 'chat' | 'feedback'
 
+function formatSessionTime(createdAt: number): string {
+  const date = new Date(createdAt)
+  const now = new Date()
+  const isToday = date.toDateString() === now.toDateString()
+  const yesterday = new Date(now)
+  yesterday.setDate(yesterday.getDate() - 1)
+  const isYesterday = date.toDateString() === yesterday.toDateString()
+  if (isToday) return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  if (isYesterday) return 'Yesterday'
+  return date.toLocaleDateString([], { month: 'short', day: 'numeric' })
+}
+
 export function ChatPanel(): JSX.Element {
   const {
     chatHistory,
+    chatSessionsByFile,
+    activeSessionIdByFile,
     isAILoading,
     aiError,
     activeFileContent,
@@ -26,13 +40,18 @@ export function ChatPanel(): JSX.Element {
     setAIError,
     setAnnotations,
     linkAnnotationsToMessage,
-    clearChat
+    newChat,
+    setActiveSession
   } = useEditorStore()
 
   const [tab, setTab] = useState<TabId>('chat')
+  const [showHistory, setShowHistory] = useState(false)
   const [pendingAttachmentCount, setPendingAttachmentCount] = useState(0)
   const scrollRef = useRef<HTMLDivElement>(null)
   const prevAnnotationCountRef = useRef(annotations.length)
+
+  // Collapse history when switching files
+  useEffect(() => { setShowHistory(false) }, [activeFilePath])
 
   // Auto-switch to Feedback tab the first time annotations appear (0 → >0)
   useEffect(() => {
@@ -103,6 +122,12 @@ export function ChatPanel(): JSX.Element {
   const allAnnotationsForFile: TextAnnotation[] =
     (activeFilePath ? annotationsByFile[activeFilePath]?.annotations : undefined) ?? []
 
+  const sessions = (activeFilePath ? chatSessionsByFile[activeFilePath] : undefined) ?? []
+  const activeSessionId = activeFilePath ? activeSessionIdByFile[activeFilePath] : undefined
+
+  // Subheader is shown in the chat tab once there is at least one session
+  const showSubheader = tab === 'chat' && sessions.length > 0
+
   return (
     <div className="chat-panel">
       {/* ── Tab bar ── */}
@@ -122,14 +147,24 @@ export function ChatPanel(): JSX.Element {
             <span className="chat-tab-badge">{annotations.length}</span>
           )}
         </button>
-
-        {/* Clear button floated right, only visible in Chat tab */}
-        {tab === 'chat' && chatHistory.length > 0 && (
-          <button className="chat-clear-btn" onClick={clearChat} title="Clear conversation">
-            Clear
-          </button>
-        )}
       </div>
+
+      {/* ── Chat sub-header: History link + New Chat button ── */}
+      {showSubheader && (
+        <div className="chat-subheader">
+          <button
+            className={`chat-history-link${showHistory ? ' chat-history-link-active' : ''}`}
+            onClick={() => setShowHistory(v => !v)}
+          >
+            {showHistory ? 'Back to chat' : `History${sessions.length > 1 ? ` (${sessions.length})` : ''}`}
+          </button>
+          {!showHistory && chatHistory.length > 0 && (
+            <button className="chat-new-btn" onClick={newChat} title="Start a new conversation">
+              + New Chat
+            </button>
+          )}
+        </div>
+      )}
 
       {/* ── Pending-attachment indicator ── */}
       {pendingAttachmentCount > 0 && (
@@ -142,6 +177,29 @@ export function ChatPanel(): JSX.Element {
       {/* ── Panel content ── */}
       {tab === 'feedback' ? (
         <FeedbackPanel />
+      ) : showHistory ? (
+        <div className="chat-history-list">
+          {[...sessions].reverse().map((session) => {
+            const isActive = session.id === activeSessionId
+            const firstUserMsg = session.messages.find(m => m.role === 'user')
+            const summary = firstUserMsg
+              ? firstUserMsg.content.slice(0, 80) + (firstUserMsg.content.length > 80 ? '…' : '')
+              : 'Empty conversation'
+            return (
+              <button
+                key={session.id}
+                className={`chat-history-item${isActive ? ' chat-history-item-active' : ''}`}
+                onClick={() => {
+                  setActiveSession(session.id)
+                  setShowHistory(false)
+                }}
+              >
+                <span className="chat-history-time">{formatSessionTime(session.createdAt)}</span>
+                <span className="chat-history-summary">{summary}</span>
+              </button>
+            )
+          })}
+        </div>
       ) : (
         <>
           <div className="chat-messages" ref={scrollRef}>
