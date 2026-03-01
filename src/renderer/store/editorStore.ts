@@ -76,6 +76,10 @@ interface EditorState {
   revisions: RevisionMeta[]
   setRevisions: (revisions: RevisionMeta[]) => void
 
+  // Right panel tab (chat or feedback) — shared so MarkdownEditor can switch it
+  rightPanelTab: 'chat' | 'feedback'
+  setRightPanelTab: (tab: 'chat' | 'feedback') => void
+
   // Session persistence
   loadSession: () => Promise<void>
 }
@@ -483,6 +487,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   revisionPanelOpen: false,
   toggleRevisionPanel: () => set((s) => ({ revisionPanelOpen: !s.revisionPanelOpen })),
+
+  rightPanelTab: 'chat',
+  setRightPanelTab: (tab) => set({ rightPanelTab: tab }),
   revisions: [],
   setRevisions: (revisions) => set({ revisions }),
 

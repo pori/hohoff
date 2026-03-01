@@ -40,6 +40,7 @@ export interface TextAnnotation {
   suggestion?: string
   applied?: boolean // true when the suggestion has been applied to the document
   dismissed?: boolean // true when the user dismissed this annotation (archived)
+  autoAnalyse?: boolean // true when created via context menu — FeedbackCard starts AI analysis immediately
 }
 
 export type AnalysisMode = 'none' | 'passive_voice' | 'consistency' | 'style' | 'critique'

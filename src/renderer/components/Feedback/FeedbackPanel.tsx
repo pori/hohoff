@@ -44,7 +44,8 @@ function FeedbackCard({ ann, autoAnalyse, onDismiss }: FeedbackCardProps): JSX.E
     if (cached) return { status: 'done', text: cached.text, suggestion: cached.suggestion }
     // Custom (attachment-driven) annotations already carry their analysis — show
     // the problem description and suggestion immediately without an extra AI call.
-    if (ann.type === 'custom') {
+    // Context-menu annotations (autoAnalyse: true) need AI analysis, so start idle.
+    if (ann.type === 'custom' && !ann.autoAnalyse) {
       return { status: 'done', text: ann.message, suggestion: ann.suggestion ?? null }
     }
     return { status: 'idle' }
@@ -93,7 +94,7 @@ function FeedbackCard({ ann, autoAnalyse, onDismiss }: FeedbackCardProps): JSX.E
         <div className="fb-card-header-top">
           <div className="fb-card-header-badges">
             <span className="fb-card-badge">{typeName}</span>
-            {ann.type === 'custom' && (
+            {ann.type === 'custom' && !ann.autoAnalyse && (
               <span className="fb-card-source-tag">from attachment</span>
             )}
           </div>
@@ -251,7 +252,7 @@ export function FeedbackPanel(): JSX.Element {
               <FeedbackCard
                 key={ann.id}
                 ann={ann}
-                autoAnalyse={analyseAll}
+                autoAnalyse={analyseAll || ann.autoAnalyse === true}
                 onDismiss={() => { cancelPendingDismiss(ann.id); removeAnnotation(ann.id); tooltipAnalysisCache.delete(ann.id) }}
               />
             ))}

@@ -116,7 +116,9 @@ export function analyseAnnotation(
         documentContent: activeFileContent,
         documentPath: activeFilePath ?? '',
         conversationHistory: [],
-        userMessage: `This passage was flagged for ${typeName}: "${ann.matchedText}"\n\nIn 1–2 sentences explain the specific issue, then provide a direct rewrite in a markdown blockquote like this:\n\n> Rewritten passage here.\n\nBe specific to this exact text—no generic advice.`
+        userMessage: ann.autoAnalyse
+          ? `Please provide editorial feedback on this selected passage: "${ann.matchedText}"\n\nIn 1–2 sentences, identify the most important issue or opportunity for improvement, then provide a suggested rewrite in a markdown blockquote:\n\n> Rewritten version here.\n\nBe specific to this exact text.`
+          : `This passage was flagged for ${typeName}: "${ann.matchedText}"\n\nIn 1–2 sentences explain the specific issue, then provide a direct rewrite in a markdown blockquote like this:\n\n> Rewritten passage here.\n\nBe specific to this exact text—no generic advice.`
       },
       (chunk: string) => {
         if (cancelled) return
@@ -607,7 +609,32 @@ export function MarkdownEditor(): JSX.Element {
         selectAll(view)
         view.focus()
       }
-    }
+    },
+    ...(hasSelection ? [
+      'separator' as const,
+      {
+        label: 'Generate feedback',
+        action: () => {
+          const view = viewRef.current
+          if (!view) return
+          const { from, to } = view.state.selection.main
+          const text = view.state.sliceDoc(from, to)
+          if (!text.trim()) return
+          const annotation: TextAnnotation = {
+            id: `custom-${Date.now()}`,
+            type: 'custom',
+            from,
+            to,
+            matchedText: text,
+            message: 'Generating feedback...',
+            autoAnalyse: true,
+          }
+          const store = useEditorStore.getState()
+          store.setAnnotations([...store.annotations, annotation])
+          store.setRightPanelTab('feedback')
+        }
+      }
+    ] : [])
   ]
 
   return (

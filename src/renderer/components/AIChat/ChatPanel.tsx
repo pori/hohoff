@@ -7,8 +7,6 @@ import { parseAnnotationsFromAIResponse } from '../../utils/annotationParser'
 import type { Attachment, TextAnnotation } from '../../types/editor'
 import './Chat.css'
 
-type TabId = 'chat' | 'feedback'
-
 function formatSessionTime(createdAt: number): string {
   const date = new Date(createdAt)
   const now = new Date()
@@ -41,10 +39,13 @@ export function ChatPanel(): JSX.Element {
     setAnnotations,
     linkAnnotationsToMessage,
     newChat,
-    setActiveSession
+    setActiveSession,
+    rightPanelTab,
+    setRightPanelTab,
   } = useEditorStore()
 
-  const [tab, setTab] = useState<TabId>('chat')
+  const tab = rightPanelTab
+  const setTab = setRightPanelTab
   const [showHistory, setShowHistory] = useState(false)
   const [pendingAttachmentCount, setPendingAttachmentCount] = useState(0)
   const scrollRef = useRef<HTMLDivElement>(null)
