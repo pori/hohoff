@@ -79,6 +79,24 @@ function FeedbackCard({ ann, autoAnalyse, onDismiss }: FeedbackCardProps): JSX.E
     return () => { cleanupRef.current?.() }
   }, [])
 
+  // When a hover tooltip completes analysis for this annotation, hydrate the card
+  // from the cache so the sidebar reflects the result without requiring a manual click.
+  useEffect(() => {
+    const handler = (e: Event): void => {
+      const { id } = (e as CustomEvent<{ id: string }>).detail
+      if (id !== ann.id) return
+      const cached = tooltipAnalysisCache.get(ann.id)
+      if (!cached) return
+      setState(prev =>
+        prev.status === 'idle'
+          ? { status: 'done', text: cached.text, suggestion: cached.suggestion }
+          : prev
+      )
+    }
+    window.addEventListener('annotation-cached', handler)
+    return () => window.removeEventListener('annotation-cached', handler)
+  }, [ann.id])
+
   const typeName = ann.type.replace(/_/g, ' ')
   const isSpinning = state.status === 'streaming' && state.text === ''
   const hasText = (state.status === 'streaming' || state.status === 'done') && state.text !== ''

@@ -130,6 +130,7 @@ export function analyseAnnotation(
       const text = accumulated || ann.message
       const suggestion = extractBlockquote(text) ?? ann.suggestion ?? null
       tooltipAnalysisCache.set(ann.id, { text, suggestion })
+      window.dispatchEvent(new CustomEvent('annotation-cached', { detail: { id: ann.id } }))
       onUpdate(text, false, suggestion)
     }).catch(() => {
       if (!cancelled) onUpdate(ann.message, false, ann.suggestion ?? null)
@@ -137,6 +138,7 @@ export function analyseAnnotation(
   } else {
     const suggestion = ann.suggestion ?? null
     tooltipAnalysisCache.set(ann.id, { text: ann.message, suggestion })
+    window.dispatchEvent(new CustomEvent('annotation-cached', { detail: { id: ann.id } }))
     onUpdate(ann.message, false, suggestion)
   }
 
