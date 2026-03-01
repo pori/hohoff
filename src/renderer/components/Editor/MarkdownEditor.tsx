@@ -145,26 +145,36 @@ export function analyseAnnotation(
 // without prop-drilling. Set in the mount effect, nulled on cleanup.
 export let currentEditorView: EditorView | null = null
 
-// Scroll the editor to an annotation and place the cursor there
+// Scroll the editor to an annotation and place the cursor there.
+// Always resolves the position from CM's rawAnnotationsField so that edits
+// made since the annotation was created don't send the cursor to a stale offset.
 export function scrollToAnnotation(ann: TextAnnotation): void {
   const view = currentEditorView
   if (!view) return
+  const tracked = view.state.field(rawAnnotationsField).find(a => a.id === ann.id) ?? ann
   view.dispatch({
-    selection: { anchor: ann.from },
-    effects: EditorView.scrollIntoView(ann.from, { y: 'center' })
+    selection: { anchor: tracked.from },
+    effects: EditorView.scrollIntoView(tracked.from, { y: 'center' })
   })
 }
 
-// Apply a suggestion to the document and mark that annotation as applied
+// Apply a suggestion to the document and mark that annotation as applied.
+// Always resolves positions from CM's rawAnnotationsField so that edits made
+// since the annotation was created don't apply the change at a stale offset,
+// and so surviving annotation positions are also remapped from their current
+// (post-edit) locations rather than the stale values held by the store.
 export function applyAnnotation(ann: TextAnnotation, suggestion: string): void {
   const view = currentEditorView
   if (!view) return
-  const { annotations: anns, markAnnotationApplied } = useEditorStore.getState()
-  const changeSpec = { from: ann.from, to: ann.to, insert: suggestion }
+  const { markAnnotationApplied } = useEditorStore.getState()
+  const cmAnnotations = view.state.field(rawAnnotationsField)
+  const tracked = cmAnnotations.find(a => a.id === ann.id)
+  if (!tracked) return
+  const changeSpec = { from: tracked.from, to: tracked.to, insert: suggestion }
   // Map surviving annotation positions through the text change so
   // their from/to reflect the new document offsets.
   const changeSet = view.state.changes(changeSpec)
-  const remaining = anns
+  const remaining = cmAnnotations
     .filter(a => a.id !== ann.id)
     .map(a => ({ ...a, from: changeSet.mapPos(a.from), to: changeSet.mapPos(a.to) }))
   // Combine text replacement + annotation update in one transaction
