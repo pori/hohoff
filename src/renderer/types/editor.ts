@@ -39,6 +39,7 @@ export interface TextAnnotation {
   message: string
   suggestion?: string
   applied?: boolean // true when the suggestion has been applied to the document
+  dismissed?: boolean // true when the user dismissed this annotation (archived)
 }
 
 export type AnalysisMode = 'none' | 'passive_voice' | 'consistency' | 'style' | 'critique'

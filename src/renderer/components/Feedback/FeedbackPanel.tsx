@@ -145,9 +145,55 @@ function FeedbackCard({ ann, autoAnalyse, onDismiss }: FeedbackCardProps): JSX.E
   )
 }
 
+interface ArchiveCardProps {
+  ann: TextAnnotation
+  onRemove?: () => void
+}
+
+function ArchiveCard({ ann, onRemove }: ArchiveCardProps): JSX.Element {
+  const typeName = ann.type.replace(/_/g, ' ')
+  const status = ann.applied ? 'applied' : 'dismissed'
+
+  return (
+    <div
+      className={`fb-archive-card fb-archive-card--${status}`}
+      style={{ '--badge-color': badgeColor(ann.type) } as React.CSSProperties}
+    >
+      <div className="fb-archive-card-header">
+        <div className="fb-archive-card-badges">
+          <span className="fb-card-badge">{typeName}</span>
+          <span className={`fb-archive-status fb-archive-status--${status}`}>{status}</span>
+        </div>
+        {onRemove && (
+          <button className="fb-archive-card-dismiss" onClick={onRemove} title="Remove from archive">
+            ×
+          </button>
+        )}
+      </div>
+      <span className="fb-archive-card-excerpt">"{ann.matchedText}"</span>
+      {ann.suggestion && (
+        <span className="fb-archive-card-suggestion">→ {ann.suggestion}</span>
+      )}
+    </div>
+  )
+}
+
 export function FeedbackPanel(): JSX.Element {
-  const { annotations, clearAnnotations, removeAnnotation } = useEditorStore()
+  const {
+    annotations,
+    annotationsByFile,
+    activeFilePath,
+    clearAnnotations,
+    removeAnnotation,
+    clearArchivedAnnotations,
+    removeArchivedAnnotation,
+  } = useEditorStore()
   const [analyseAll, setAnalyseAll] = useState(false)
+
+  const archivedAnnotations = activeFilePath
+    ? (annotationsByFile[activeFilePath]?.annotations ?? []).filter(a => a.applied || a.dismissed)
+    : []
+  const dismissedCount = archivedAnnotations.filter(a => a.dismissed).length
 
   // Reset "Analyse all" whenever the annotation set changes (new critique run),
   // so auto-analysis doesn't carry over to fresh results unexpectedly.
@@ -164,7 +210,10 @@ export function FeedbackPanel(): JSX.Element {
     tooltipAnalysisCache.clear()
   }
 
-  if (annotations.length === 0) {
+  const hasActive = annotations.length > 0
+  const hasArchive = archivedAnnotations.length > 0
+
+  if (!hasActive && !hasArchive) {
     return (
       <div className="fb-panel">
         <div className="fb-empty">
@@ -177,34 +226,67 @@ export function FeedbackPanel(): JSX.Element {
 
   return (
     <div className="fb-panel">
-      <div className="fb-toolbar">
-        <button
-          className="fb-toolbar-btn"
-          onClick={() => setAnalyseAll(true)}
-          disabled={analyseAll}
-          title="Run AI analysis on all highlighted passages"
-        >
-          Analyse all
-        </button>
-        <button
-          className="fb-toolbar-btn fb-toolbar-btn--clear"
-          onClick={handleClearAll}
-          title="Remove all highlights"
-        >
-          Clear all
-        </button>
-      </div>
+      {hasActive && (
+        <>
+          <div className="fb-toolbar">
+            <button
+              className="fb-toolbar-btn"
+              onClick={() => setAnalyseAll(true)}
+              disabled={analyseAll}
+              title="Run AI analysis on all highlighted passages"
+            >
+              Analyse all
+            </button>
+            <button
+              className="fb-toolbar-btn fb-toolbar-btn--clear"
+              onClick={handleClearAll}
+              title="Archive all highlights"
+            >
+              Clear all
+            </button>
+          </div>
 
-      <div className="fb-list">
-        {annotations.map(ann => (
-          <FeedbackCard
-            key={ann.id}
-            ann={ann}
-            autoAnalyse={analyseAll}
-            onDismiss={() => { cancelPendingDismiss(ann.id); removeAnnotation(ann.id); tooltipAnalysisCache.delete(ann.id) }}
-          />
-        ))}
-      </div>
+          <div className="fb-list">
+            {annotations.map(ann => (
+              <FeedbackCard
+                key={ann.id}
+                ann={ann}
+                autoAnalyse={analyseAll}
+                onDismiss={() => { cancelPendingDismiss(ann.id); removeAnnotation(ann.id); tooltipAnalysisCache.delete(ann.id) }}
+              />
+            ))}
+          </div>
+        </>
+      )}
+
+      {hasArchive && (
+        <details className="fb-archive">
+          <summary className="fb-archive-header">
+            <span className="fb-archive-title">
+              Archive
+              <span className="fb-archive-count">{archivedAnnotations.length}</span>
+            </span>
+            {dismissedCount > 0 && (
+              <button
+                className="fb-archive-clear-btn"
+                onClick={(e) => { e.preventDefault(); clearArchivedAnnotations() }}
+                title="Permanently remove all dismissed items"
+              >
+                Clear dismissed
+              </button>
+            )}
+          </summary>
+          <div className="fb-archive-list">
+            {archivedAnnotations.map(ann => (
+              <ArchiveCard
+                key={ann.id}
+                ann={ann}
+                onRemove={ann.dismissed ? () => removeArchivedAnnotation(ann.id) : undefined}
+              />
+            ))}
+          </div>
+        </details>
+      )}
     </div>
   )
 }

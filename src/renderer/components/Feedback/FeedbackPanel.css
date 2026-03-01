@@ -252,3 +252,159 @@
 .fb-card-apply:hover {
   opacity: 0.85;
 }
+
+/* ── Archive section ─────────────────────────────────── */
+.fb-archive {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+}
+
+.fb-archive-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 12px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  transition: color 0.15s;
+}
+
+.fb-archive-header::-webkit-details-marker { display: none; }
+
+.fb-archive-header:hover {
+  color: var(--text-secondary);
+}
+
+.fb-archive-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fb-archive-count {
+  background: var(--border);
+  color: var(--text-muted);
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  letter-spacing: 0;
+}
+
+.fb-archive-clear-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.fb-archive-clear-btn:hover {
+  color: #e07070;
+  border-color: rgba(200, 60, 60, 0.5);
+}
+
+.fb-archive-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 12px 10px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+/* ── Archive card ────────────────────────────────────── */
+.fb-archive-card {
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 7px 10px;
+  background: var(--message-bg);
+  opacity: 0.7;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fb-archive-card:hover {
+  opacity: 1;
+}
+
+.fb-archive-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.fb-archive-card-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* "applied" / "dismissed" status tag */
+.fb-archive-status {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 3px;
+  padding: 1px 5px;
+  white-space: nowrap;
+  align-self: flex-start;
+}
+
+.fb-archive-status--applied {
+  color: rgba(80, 200, 120, 0.85);
+  border: 1px solid rgba(80, 200, 120, 0.3);
+}
+
+.fb-archive-status--dismissed {
+  color: rgba(160, 160, 160, 0.75);
+  border: 1px solid rgba(160, 160, 160, 0.25);
+}
+
+.fb-archive-card-dismiss {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 15px;
+  line-height: 1;
+  padding: 0 2px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+
+.fb-archive-card:hover .fb-archive-card-dismiss {
+  opacity: 1;
+}
+
+.fb-archive-card-dismiss:hover {
+  color: var(--text-primary);
+}
+
+.fb-archive-card-excerpt {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+  line-height: 1.5;
+}
+
+.fb-archive-card-suggestion {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
