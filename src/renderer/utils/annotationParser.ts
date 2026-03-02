@@ -99,6 +99,54 @@ function extractMessage(response: string, quoteIndex: number): string {
   return last.length > 200 ? last.slice(0, 200) + '…' : last
 }
 
+// Re-anchor a list of annotations against the current document content.
+// Validates each annotation's from/to against its matchedText and re-searches
+// when they disagree (e.g. after session restore with externally modified files).
+// Annotations whose matchedText can no longer be found are dropped.
+export function reanchorAnnotations(
+  annotations: TextAnnotation[],
+  content: string
+): TextAnnotation[] {
+  return annotations.flatMap(ann => {
+    // Fast path: stored position still matches the original text exactly (O(1))
+    if (
+      ann.from >= 0 &&
+      ann.to <= content.length &&
+      ann.from < ann.to &&
+      content.slice(ann.from, ann.to) === ann.matchedText
+    ) {
+      return [ann]
+    }
+    // Re-search using hint, full doc scan, then fuzzy fallback
+    const newFrom = findMatchedTextNear(content, ann.matchedText, ann.from)
+    if (newFrom === -1) return []
+    return [{ ...ann, from: newFrom, to: newFrom + ann.matchedText.length }]
+  })
+}
+
+function findMatchedTextNear(content: string, text: string, hint: number): number {
+  // 1. Near-hint window (±500 chars) — handles minor external edits cheaply
+  const windowStart = Math.max(0, hint - 500)
+  const localIdx = content.indexOf(text, windowStart)
+  if (localIdx !== -1 && localIdx <= hint + text.length + 500) return localIdx
+
+  // 2. Full document — find occurrence closest to the stored hint
+  let bestIdx = -1
+  let bestDist = Infinity
+  let searchFrom = 0
+  while (true) {
+    const idx = content.indexOf(text, searchFrom)
+    if (idx === -1) break
+    const dist = Math.abs(idx - hint)
+    if (dist < bestDist) { bestDist = dist; bestIdx = idx }
+    searchFrom = idx + 1
+  }
+  if (bestIdx !== -1) return bestIdx
+
+  // 3. Normalized whitespace fallback
+  return findNormalized(content, text.replace(/\s+/g, ' '))
+}
+
 // Find a normalized string in a document (ignores whitespace differences)
 function findNormalized(document: string, normalized: string): number {
   const words = normalized.split(' ')

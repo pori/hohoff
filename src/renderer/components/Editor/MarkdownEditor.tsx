@@ -9,6 +9,7 @@ import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import { useEditorStore } from '../../store/editorStore'
 import type { TextAnnotation } from '../../types/editor'
+import { reanchorAnnotations } from '../../utils/annotationParser'
 import { ContextMenu } from '../FileTree/ContextMenu'
 import type { MenuItem } from '../FileTree/ContextMenu'
 import './Editor.css'
@@ -531,16 +532,19 @@ export function MarkdownEditor(): JSX.Element {
   }, [activeFilePath]) // Only sync on file switch
 
   // Push annotation decorations into CodeMirror.
-  // Merge the store's list (which annotations exist) with CM-tracked positions
-  // (where they actually are after any edits), so that dismissing or adding an
-  // annotation doesn't reset surviving highlights to stale store positions.
+  // Re-anchors positions against current doc content first so that stale
+  // from/to offsets (from session restore or external file edits) are corrected
+  // before they reach CM. Then merges with CM-tracked positions so that live
+  // mapPos updates are never overwritten for already-tracked annotations.
   // Marked addToHistory.of(false) so this sync dispatch never creates an undo
   // step — only Apply and tagged auto-dismissals should be undoable.
   useEffect(() => {
     const view = viewRef.current
     if (!view) return
+    const content = view.state.doc.toString()
+    const reanchored = reanchorAnnotations(annotations, content)
     const trackedById = new Map(view.state.field(rawAnnotationsField).map(a => [a.id, a]))
-    const toDispatch = annotations.map(a => trackedById.get(a.id) ?? a)
+    const toDispatch = reanchored.map(a => trackedById.get(a.id) ?? a)
     view.dispatch({
       effects: setAnnotationsEffect.of(toDispatch),
       annotations: [Transaction.addToHistory.of(false)]
