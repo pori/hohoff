@@ -98,8 +98,10 @@ export function analyseAnnotation(
   ann: TextAnnotation,
   onUpdate: (text: string, streaming: boolean, suggestion: string | null) => void
 ): () => void {
-  const cached = tooltipAnalysisCache.get(ann.id)
+  const cached = tooltipAnalysisCache.get(ann.id) ?? ann.analysisCache ?? null
   if (cached) {
+    // Warm the in-memory cache so subsequent calls this session are instant
+    if (!tooltipAnalysisCache.has(ann.id)) tooltipAnalysisCache.set(ann.id, cached)
     onUpdate(cached.text, false, cached.suggestion)
     return () => {}
   }
@@ -131,6 +133,7 @@ export function analyseAnnotation(
       const text = accumulated || ann.message
       const suggestion = extractBlockquote(text) ?? ann.suggestion ?? null
       tooltipAnalysisCache.set(ann.id, { text, suggestion })
+      useEditorStore.getState().setAnnotationAnalysis(ann.id, { text, suggestion })
       onUpdate(text, false, suggestion)
     }).catch(() => {
       if (!cancelled) onUpdate(ann.message, false, ann.suggestion ?? null)
@@ -361,6 +364,11 @@ function buildTheme(fontSize: number, dark: boolean): ReturnType<typeof EditorVi
     '.annotation-style': {
       backgroundColor: 'rgba(80, 160, 255, 0.18)',
       borderBottom: '2px solid rgba(80, 160, 255, 0.7)',
+      borderRadius: '2px'
+    },
+    '.annotation-show_tell': {
+      backgroundColor: 'rgba(255, 140, 30, 0.18)',
+      borderBottom: '2px solid rgba(255, 140, 30, 0.7)',
       borderRadius: '2px'
     },
     '.annotation-critique': {

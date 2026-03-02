@@ -59,7 +59,7 @@ export function AnalysisToolbar(): JSX.Element {
     setAnalysisMode('passive_voice')
   }
 
-  const runAIAnalysis = async (mode: 'consistency' | 'style' | 'critique'): Promise<void> => {
+  const runAIAnalysis = async (mode: 'consistency' | 'style' | 'show_tell' | 'critique'): Promise<void> => {
     if (!activeFilePath || isAILoading) return
 
     setAnalysisMode(mode)
@@ -70,7 +70,9 @@ export function AnalysisToolbar(): JSX.Element {
         ? 'Please check this chapter for consistency issues (character names, timeline, repeated phrases).'
         : mode === 'style'
           ? 'Please analyze the style and pacing of this chapter and suggest improvements.'
-          : 'Please give me an honest critique of this chapter.'
+          : mode === 'show_tell'
+            ? 'Please identify every passage in this chapter where I am telling rather than showing.'
+            : 'Please give me an honest critique of this chapter.'
 
     addUserMessage(prompt)
     startAssistantMessage()
@@ -96,7 +98,10 @@ export function AnalysisToolbar(): JSX.Element {
       const currentHistory = useEditorStore.getState().chatHistory
       const lastMsg = currentHistory[currentHistory.length - 1]
       if (lastMsg?.role === 'assistant' && lastMsg.content.length > 0) {
-        const newAnnotations = parseAnnotationsFromAIResponse(lastMsg.content, activeFileContent)
+        // For show_tell mode, force all annotations to the show_tell type so the
+        // classifier doesn't accidentally mis-label them as 'style' or 'consistency'.
+        const overrideType = mode === 'show_tell' ? 'show_tell' : undefined
+        const newAnnotations = parseAnnotationsFromAIResponse(lastMsg.content, activeFileContent, overrideType)
         if (newAnnotations.length > 0) {
           const existing = useEditorStore.getState().annotations.filter((a) => a.type !== mode)
           setAnnotations([...existing, ...newAnnotations])
@@ -113,6 +118,7 @@ export function AnalysisToolbar(): JSX.Element {
   const passiveCount = annotations.filter((a) => a.type === 'passive_voice').length
   const consistencyCount = annotations.filter((a) => a.type === 'consistency').length
   const styleCount = annotations.filter((a) => a.type === 'style').length
+  const showTellCount = annotations.filter((a) => a.type === 'show_tell').length
   const critiqueCount = annotations.filter((a) => a.type === 'critique').length
   const docWordCount = countWords(activeFileContent)
 
@@ -152,6 +158,18 @@ export function AnalysisToolbar(): JSX.Element {
           {isAILoading && analysisMode === 'style' ? 'Analyzing…' : 'Style'}
           {styleCount > 0 && (
             <span className="toolbar-badge">{styleCount}</span>
+          )}
+        </button>
+
+        <button
+          className={`toolbar-btn${analysisMode === 'show_tell' ? ' active' : ''}`}
+          onClick={() => runAIAnalysis('show_tell')}
+          disabled={!hasFile || isAILoading}
+          title="Find passages that tell rather than show via AI"
+        >
+          {isAILoading && analysisMode === 'show_tell' ? 'Reading…' : 'Show vs Tell'}
+          {showTellCount > 0 && (
+            <span className="toolbar-badge">{showTellCount}</span>
           )}
         </button>
 

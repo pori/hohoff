@@ -58,15 +58,28 @@ SUGGESTION: [how to fix it]`,
     style: `Analyze the writing style and provide specific improvement suggestions:
 - Pacing: identify slow passages or rushed moments
 - Sentence variety: flag runs of similar length or structure
-- Show don't tell: identify passages that tell emotion/state rather than showing it
 - Gothic atmosphere: passages where the atmospheric tone is inconsistent
 - Dialogue: any dialogue that feels stilted or unnatural
 
 For each suggestion:
-ISSUE: [type: Pacing / Sentence Variety / Show-Don't-Tell / Atmosphere / Dialogue]
+ISSUE: [type: Pacing / Sentence Variety / Atmosphere / Dialogue]
 PASSAGE: "[exact quoted text]"
 PROBLEM: [specific explanation]
 SUGGESTION: [concrete rewrite or approach]`,
+
+    show_tell: `Identify every passage in this chapter where the author tells the reader something that should instead be shown through action, dialogue, sensation, or concrete detail.
+
+Focus on:
+- Emotions or inner states stated directly ("she felt afraid", "he was relieved") instead of expressed through physical reaction or behaviour
+- Character motivations or intentions explained by the narrator rather than revealed through what characters do or say
+- Abstract or evaluative description ("the room was oppressive", "it was a beautiful day") instead of specific sensory detail that lets the reader feel it
+- Dialogue tags or beats that tell the reader how something was said rather than letting word choice and action carry it
+
+For each instance:
+ISSUE: Show Don't Tell
+PASSAGE: "[exact quoted text from the chapter]"
+PROBLEM: [one sentence explaining what is being told that should be shown]
+SUGGESTION: "[a concrete rewrite that shows the same moment through action, sensation, or dialogue]"`,
 
     critique: `Give an honest, detailed critique of this chapter as a whole. Structure your response as follows:
 

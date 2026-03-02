@@ -43,6 +43,7 @@ interface EditorState {
   linkAnnotationsToMessage: (messageId: string, annotationIds: string[]) => void
   clearArchivedAnnotations: () => void
   removeArchivedAnnotation: (id: string) => void
+  setAnnotationAnalysis: (id: string, result: { text: string; suggestion: string | null }) => void
 
   // Analysis mode
   analysisMode: AnalysisMode
@@ -442,6 +443,37 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         annotationsByFile: {
           ...s.annotationsByFile,
           [s.activeFilePath]: { ...fileState, annotations: fileState.annotations.filter(a => a.id !== id) }
+        }
+      }
+    })
+    scheduleSave(() => {
+      const st = get()
+      return {
+        activeFilePath: st.activeFilePath,
+        scrollPositions: st.scrollPositions,
+        chatSessionsByFile: st.chatSessionsByFile,
+        activeSessionIdByFile: st.activeSessionIdByFile,
+        annotationsByFile: st.annotationsByFile
+      }
+    })
+  },
+
+  setAnnotationAnalysis: (id, result) => {
+    set((s) => {
+      if (!s.activeFilePath) return {}
+      const fileState = s.annotationsByFile[s.activeFilePath]
+      if (!fileState) return {}
+      const updatedAll = fileState.annotations.map(a =>
+        a.id === id ? { ...a, analysisCache: result } : a
+      )
+      const annotations = s.annotations.map(a =>
+        a.id === id ? { ...a, analysisCache: result } : a
+      )
+      return {
+        annotations,
+        annotationsByFile: {
+          ...s.annotationsByFile,
+          [s.activeFilePath]: { ...fileState, annotations: updatedAll }
         }
       }
     })

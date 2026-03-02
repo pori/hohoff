@@ -22,6 +22,7 @@ function badgeColor(type: TextAnnotation['type']): string {
     case 'passive_voice': return 'rgba(255, 200, 0, 0.75)'
     case 'consistency':   return 'rgba(220, 80, 80, 0.75)'
     case 'style':         return 'rgba(80, 160, 255, 0.75)'
+    case 'show_tell':     return 'rgba(255, 140, 30, 0.75)'
     case 'critique':      return 'rgba(160, 80, 220, 0.75)'
     case 'custom':        return 'rgba(30, 200, 150, 0.8)'
   }
@@ -40,7 +41,7 @@ interface FeedbackCardProps {
 
 function FeedbackCard({ ann, autoAnalyse, onDismiss }: FeedbackCardProps): JSX.Element {
   const [state, setState] = useState<AnalysisState>(() => {
-    const cached = tooltipAnalysisCache.get(ann.id)
+    const cached = tooltipAnalysisCache.get(ann.id) ?? ann.analysisCache ?? null
     if (cached) return { status: 'done', text: cached.text, suggestion: cached.suggestion }
     // Custom (attachment-driven) annotations already carry their analysis — show
     // the problem description and suggestion immediately without an extra AI call.

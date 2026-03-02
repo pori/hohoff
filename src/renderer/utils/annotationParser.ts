@@ -68,12 +68,21 @@ function classifyType(contextBefore: string): AnnotationType {
   if (contextBefore.includes('passive')) return 'passive_voice'
   if (
     contextBefore.includes('consistency') ||
-    contextBefore.includes('character') ||
     contextBefore.includes('timeline') ||
     contextBefore.includes('repeated') ||
     contextBefore.includes('contradiction')
   ) {
     return 'consistency'
+  }
+  if (
+    contextBefore.includes('show don') ||
+    contextBefore.includes('show-don') ||
+    contextBefore.includes('show vs tell') ||
+    contextBefore.includes('show/tell') ||
+    contextBefore.includes('telling') ||
+    contextBefore.includes('told') && contextBefore.includes('show')
+  ) {
+    return 'show_tell'
   }
   return 'style'
 }

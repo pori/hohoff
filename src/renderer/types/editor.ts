@@ -28,7 +28,7 @@ export interface ChatSession {
   messages: ChatMessage[]
 }
 
-export type AnnotationType = 'passive_voice' | 'consistency' | 'style' | 'critique' | 'custom'
+export type AnnotationType = 'passive_voice' | 'consistency' | 'style' | 'show_tell' | 'critique' | 'custom'
 
 export interface TextAnnotation {
   id: string
@@ -41,11 +41,12 @@ export interface TextAnnotation {
   applied?: boolean // true when the suggestion has been applied to the document
   dismissed?: boolean // true when the user dismissed this annotation (archived)
   autoAnalyse?: boolean // true when created via context menu — FeedbackCard starts AI analysis immediately
+  analysisCache?: { text: string; suggestion: string | null } // persisted AI analysis result
 }
 
-export type AnalysisMode = 'none' | 'passive_voice' | 'consistency' | 'style' | 'critique'
+export type AnalysisMode = 'none' | 'passive_voice' | 'consistency' | 'style' | 'show_tell' | 'critique'
 
-export type AIMode = 'chat' | 'passive_voice' | 'consistency' | 'style' | 'critique'
+export type AIMode = 'chat' | 'passive_voice' | 'consistency' | 'style' | 'show_tell' | 'critique'
 
 export interface AIPayload {
   mode: AIMode
