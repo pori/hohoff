@@ -61,7 +61,19 @@ export function parseAnnotationsFromAIResponse(
     })
   }
 
-  return annotations
+  return deduplicateOverlapping(annotations)
+}
+
+function deduplicateOverlapping(annotations: TextAnnotation[]): TextAnnotation[] {
+  // Process largest spans first so the bigger annotation always wins over any
+  // overlapping smaller one (e.g. a full sentence beats a sub-phrase within it).
+  const sorted = [...annotations].sort((a, b) => (b.to - b.from) - (a.to - a.from))
+  const kept: TextAnnotation[] = []
+  for (const ann of sorted) {
+    const overlaps = kept.some(k => ann.from < k.to && ann.to > k.from)
+    if (!overlaps) kept.push(ann)
+  }
+  return kept
 }
 
 function classifyType(contextBefore: string): AnnotationType {
