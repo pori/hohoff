@@ -7,10 +7,11 @@ export function parseAnnotationsFromAIResponse(
   aiResponse: string,
   documentContent: string,
   overrideType?: AnnotationType
-): TextAnnotation[] {
+): { annotations: TextAnnotation[]; droppedCount: number } {
   const annotations: TextAnnotation[] = []
   let id = 0
   const runId = Date.now()
+  let droppedCount = 0
 
   // Match quoted strings — handles "straight", "curly", and 'single' quotes
   // Minimum 10 chars to avoid matching short words
@@ -29,7 +30,10 @@ export function parseAnnotationsFromAIResponse(
       docIndex = findNormalized(documentContent, normalized)
     }
 
-    if (docIndex === -1) continue
+    if (docIndex === -1) {
+      droppedCount++
+      continue
+    }
 
     // Don't annotate the same range twice
     const alreadyAnnotated = annotations.some(
@@ -61,7 +65,7 @@ export function parseAnnotationsFromAIResponse(
     })
   }
 
-  return deduplicateOverlapping(annotations)
+  return { annotations: deduplicateOverlapping(annotations), droppedCount }
 }
 
 function deduplicateOverlapping(annotations: TextAnnotation[]): TextAnnotation[] {

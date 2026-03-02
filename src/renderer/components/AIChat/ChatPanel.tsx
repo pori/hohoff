@@ -48,6 +48,7 @@ export function ChatPanel(): JSX.Element {
   const setTab = setRightPanelTab
   const [showHistory, setShowHistory] = useState(false)
   const [pendingAttachmentCount, setPendingAttachmentCount] = useState(0)
+  const [feedbackNotice, setFeedbackNotice] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const prevAnnotationCountRef = useRef(annotations.length)
 
@@ -68,6 +69,7 @@ export function ChatPanel(): JSX.Element {
     if (!activeFilePath || isAILoading) return
 
     setAIError(null)
+    setFeedbackNotice(null)
     addUserMessage(text, attachments.map(({ name, mimeType }) => ({ name, mimeType })))
     startAssistantMessage()
     setAILoading(true)
@@ -97,10 +99,16 @@ export function ChatPanel(): JSX.Element {
       const lastMsg = currentHistory[currentHistory.length - 1]
       if (lastMsg?.role === 'assistant' && lastMsg.content.length > 0) {
         const overrideType = attachments.length > 0 ? 'custom' as const : undefined
-        const parsed = parseAnnotationsFromAIResponse(lastMsg.content, activeFileContent, overrideType)
+        const latestContent = useEditorStore.getState().activeFileContent
+        const { annotations: parsed, droppedCount } = parseAnnotationsFromAIResponse(lastMsg.content, latestContent, overrideType)
         if (parsed.length > 0) {
           setAnnotations(parsed)
           linkAnnotationsToMessage(lastMsg.id, parsed.map(a => a.id))
+        }
+        if (droppedCount > 0) {
+          setFeedbackNotice(
+            `${droppedCount} feedback item${droppedCount === 1 ? '' : 's'} couldn't be applied — the referenced text has been edited.`
+          )
         }
       }
     } catch (err) {
@@ -233,6 +241,9 @@ export function ChatPanel(): JSX.Element {
             )}
             {aiError && (
               <div className="chat-error">{aiError}</div>
+            )}
+            {feedbackNotice && (
+              <div className="chat-info-notice">{feedbackNotice}</div>
             )}
           </div>
 

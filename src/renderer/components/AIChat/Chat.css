@@ -381,6 +381,15 @@
   padding: 10px 12px;
 }
 
+.chat-info-notice {
+  background: rgba(180, 140, 60, 0.12);
+  border: 1px solid rgba(180, 140, 60, 0.35);
+  border-radius: 6px;
+  color: #c9a94a;
+  font-size: 12px;
+  padding: 10px 12px;
+}
+
 .chat-input-area {
   display: flex;
   flex-direction: column;

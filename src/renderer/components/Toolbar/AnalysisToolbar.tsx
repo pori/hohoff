@@ -101,7 +101,7 @@ export function AnalysisToolbar(): JSX.Element {
         // For show_tell mode, force all annotations to the show_tell type so the
         // classifier doesn't accidentally mis-label them as 'style' or 'consistency'.
         const overrideType = mode === 'show_tell' ? 'show_tell' : undefined
-        const newAnnotations = parseAnnotationsFromAIResponse(lastMsg.content, activeFileContent, overrideType)
+        const { annotations: newAnnotations } = parseAnnotationsFromAIResponse(lastMsg.content, activeFileContent, overrideType)
         if (newAnnotations.length > 0) {
           const existing = useEditorStore.getState().annotations.filter((a) => a.type !== mode)
           setAnnotations([...existing, ...newAnnotations])
