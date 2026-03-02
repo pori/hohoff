@@ -266,7 +266,7 @@ export function FeedbackPanel(): JSX.Element {
           </div>
 
           <div className="fb-list">
-            {annotations.map(ann => (
+            {[...annotations].sort((a, b) => a.from - b.from).map(ann => (
               <FeedbackCard
                 key={ann.id}
                 ann={ann}
