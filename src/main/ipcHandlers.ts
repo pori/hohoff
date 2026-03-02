@@ -1,7 +1,7 @@
 import { ipcMain, dialog, BrowserWindow } from 'electron'
 import { readFileSync } from 'fs'
 import { extname, basename } from 'path'
-import { listDraftFiles, readMarkdownFile, writeMarkdownFile, getProjectWordCount, saveOrderFile, readSession, writeSession, saveRevision, listRevisions, loadRevision, deleteRevision, renameFileOrDir, deleteFileOrDir, createMarkdownFile, createSubdirectory, moveFileOrDir } from './fileSystem'
+import { listDraftFiles, readMarkdownFile, writeMarkdownFile, getProjectWordCount, saveOrderFile, readSession, writeSession, saveRevision, listRevisions, loadRevision, deleteRevision, renameFileOrDir, deleteFileOrDir, createMarkdownFile, createSubdirectory, moveFileOrDir, readAllDraftFiles, readStoryBibleFile, openStoryBibleFile, writeStoryBibleFile } from './fileSystem'
 import { streamMessage } from './aiService'
 import type { AIPayload, Attachment } from '../renderer/types/editor'
 
@@ -70,6 +70,14 @@ export function registerIpcHandlers(): void {
     return await moveFileOrDir(sourcePath, targetDirPath)
   })
 
+  ipcMain.handle('fs:openStoryBible', async () => {
+    return await openStoryBibleFile()
+  })
+
+  ipcMain.handle('fs:writeStoryBible', async (_event, content: string) => {
+    await writeStoryBibleFile(content)
+  })
+
   ipcMain.handle('fs:pickAttachments', async (event): Promise<Attachment[]> => {
     const win = BrowserWindow.fromWebContents(event.sender)
     const result = await dialog.showOpenDialog(win!, {
@@ -115,7 +123,9 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('ai:streamMessage', async (event, payload: AIPayload) => {
     try {
-      await streamMessage(payload, (chunk: string) => {
+      const allDocs = payload.projectMode ? await readAllDraftFiles() : undefined
+      const storyBibleContent = payload.storyBibleMode ? (await readStoryBibleFile() ?? undefined) : undefined
+      await streamMessage(payload, allDocs, storyBibleContent, (chunk: string) => {
         if (!event.sender.isDestroyed()) {
           event.sender.send('ai:chunk', chunk)
         }

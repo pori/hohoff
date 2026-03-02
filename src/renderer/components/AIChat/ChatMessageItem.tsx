@@ -2,6 +2,8 @@ import { useMemo } from 'react'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import type { ChatMessage, TextAnnotation } from '../../types/editor'
+import { useEditorStore } from '../../store/editorStore'
+import { currentEditorView } from '../Editor/MarkdownEditor'
 
 marked.setOptions({ breaks: true })
 
@@ -27,11 +29,31 @@ interface Props {
 }
 
 export function ChatMessageItem({ message, linkedAnnotations }: Props): JSX.Element {
+  const { activeFilePath, markSaved } = useEditorStore()
+
   const html = useMemo(() => {
     if (message.role !== 'assistant' || !message.content) return null
     const raw = marked.parse(message.content) as string
     return DOMPurify.sanitize(raw)
   }, [message.role, message.content])
+
+  const handleApplyToBible = async (): Promise<void> => {
+    await window.api.writeStoryBible(message.content)
+    // If the story bible is currently open, update the editor directly.
+    // setActiveFile(samePath, …) doesn't trigger the MarkdownEditor's sync effect
+    // (which only watches activeFilePath changes), so we use currentEditorView
+    // instead — the same pattern used by RevisionPanel.restore().
+    if (activeFilePath?.endsWith('Story Bible.md')) {
+      const view = currentEditorView
+      if (view) {
+        view.dispatch({
+          changes: { from: 0, to: view.state.doc.length, insert: message.content }
+        })
+        // File is already saved — clear the dirty flag the dispatch just set
+        markSaved()
+      }
+    }
+  }
 
   return (
     <div className={`chat-message chat-message-${message.role}`}>
@@ -84,6 +106,18 @@ export function ChatMessageItem({ message, linkedAnnotations }: Props): JSX.Elem
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {message.bibleGeneration && message.role === 'assistant' && message.content.length > 0 && (
+        <div className="chat-message-apply">
+          <button
+            className="chat-apply-btn"
+            onClick={handleApplyToBible}
+            title="Replace Story Bible.md with this content"
+          >
+            ↓ Apply to Story Bible
+          </button>
         </div>
       )}
     </div>

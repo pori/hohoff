@@ -26,7 +26,7 @@ interface EditorState {
   isAILoading: boolean
   aiError: string | null
   addUserMessage: (text: string, attachments?: AttachmentMeta[]) => void
-  startAssistantMessage: () => void
+  startAssistantMessage: (opts?: { bibleGeneration?: boolean }) => void
   appendToLastAssistantMessage: (chunk: string) => void
   setAILoading: (loading: boolean) => void
   setAIError: (error: string | null) => void
@@ -70,6 +70,14 @@ interface EditorState {
   // Theme
   theme: 'dark' | 'light'
   toggleTheme: () => void
+
+  // Whole story context mode
+  wholeStoryMode: boolean
+  setWholeStoryMode: (enabled: boolean) => void
+
+  // Story bible context mode
+  storyBibleMode: boolean
+  setStoryBibleMode: (enabled: boolean) => void
 
   // Revision panel
   revisionPanelOpen: boolean
@@ -203,8 +211,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     })
   },
 
-  startAssistantMessage: () => {
-    const msg: ChatMessage = { id: `asst-${Date.now()}`, role: 'assistant', content: '' }
+  startAssistantMessage: (opts?) => {
+    const msg: ChatMessage = { id: `asst-${Date.now()}`, role: 'assistant', content: '', bibleGeneration: opts?.bibleGeneration }
     set((s) => {
       const history = [...s.chatHistory, msg]
       if (!s.activeFilePath) return { chatHistory: history }
@@ -540,6 +548,18 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       document.documentElement.classList.toggle('light', next === 'light')
       return { theme: next }
     })
+  },
+
+  wholeStoryMode: localStorage.getItem('wholeStoryMode') === 'true',
+  setWholeStoryMode: (enabled: boolean) => {
+    localStorage.setItem('wholeStoryMode', String(enabled))
+    set({ wholeStoryMode: enabled })
+  },
+
+  storyBibleMode: localStorage.getItem('storyBibleMode') === 'true',
+  setStoryBibleMode: (enabled: boolean) => {
+    localStorage.setItem('storyBibleMode', String(enabled))
+    set({ storyBibleMode: enabled })
   },
 
   loadSession: async () => {

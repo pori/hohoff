@@ -140,3 +140,24 @@
   margin: 0 3px;
   opacity: 0.5;
 }
+
+/* ── Story Bible toolbar ─────────────────────────────────────────── */
+.toolbar-bible-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-right: 2px;
+  align-self: center;
+}
+
+.toolbar-btn-bible {
+  color: var(--accent);
+}
+
+.toolbar-btn-bible:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}

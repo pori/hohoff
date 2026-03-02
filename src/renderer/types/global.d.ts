@@ -23,6 +23,8 @@ declare global {
       createFile: (parentPath: string, name: string) => Promise<string>
       createDir: (parentPath: string, name: string) => Promise<string>
       moveFile: (sourcePath: string, targetDirPath: string) => Promise<string>
+      openStoryBible: () => Promise<{ path: string; content: string }>
+      writeStoryBible: (content: string) => Promise<void>
     }
   }
 }

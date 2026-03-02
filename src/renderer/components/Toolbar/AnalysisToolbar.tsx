@@ -5,6 +5,33 @@ import { parseAnnotationsFromAIResponse } from '../../utils/annotationParser'
 import { tooltipAnalysisCache } from '../Editor/MarkdownEditor'
 import './Toolbar.css'
 
+const BIBLE_PROMPTS = {
+  full: `Read the full manuscript and generate comprehensive story bible content as markdown. Include:
+
+## Characters
+[Detailed profile for every named character: role, physical description, personality, key relationships, arc]
+
+## World & Setting
+[Geography, historical period, Basque Country cultural details, atmosphere, key locations]
+
+## Timeline
+[Key events in chronological order with chapter references]
+
+## Themes & Motifs
+[Recurring symbols, imagery, thematic concerns]
+
+## Continuity Rules
+[Facts that must stay consistent: character details, established plot points, internal logic]
+
+Base everything strictly on what is in the manuscript text.`,
+
+  characters: `Read the full manuscript and write character profiles for the Story Bible's Characters section. For each named character include: role, physical description, personality traits, key relationships, and arc. Format as markdown subsections (### Name).`,
+
+  timeline: `Read the full manuscript and extract all significant events in chronological order for the Story Bible Timeline section. Reference chapters where helpful. Format as a markdown numbered list.`,
+
+  world: `Read the full manuscript and write a World & Setting entry for the Story Bible. Cover: the Basque Country geography and atmosphere, the historical period and cultural context, and key locations described in the text. Format as markdown.`
+}
+
 function countWords(text: string): number {
   return text.trim() === '' ? 0 : text.trim().split(/\s+/).length
 }
@@ -35,7 +62,8 @@ export function AnalysisToolbar(): JSX.Element {
     projectWordCount,
     setProjectWordCount,
     fontSize,
-    setFontSize
+    setFontSize,
+    setRightPanelTab
   } = useEditorStore()
 
   useEffect(() => {
@@ -50,6 +78,40 @@ export function AnalysisToolbar(): JSX.Element {
   }, [isDirty])
 
   const hasFile = Boolean(activeFilePath)
+  const isStoryBible = activeFilePath?.endsWith('Story Bible.md') ?? false
+
+  const runBibleGeneration = async (prompt: string): Promise<void> => {
+    if (!activeFilePath || isAILoading) return
+    setAIError(null)
+    setRightPanelTab('chat')
+
+    addUserMessage(prompt)
+    startAssistantMessage({ bibleGeneration: true })
+    setAILoading(true)
+
+    try {
+      await window.api.streamAIMessage(
+        {
+          mode: 'chat',
+          documentContent: activeFileContent,
+          documentPath: activeFilePath,
+          conversationHistory: chatHistory
+            .slice(-10)
+            .map((m) => ({ role: m.role, content: m.content })),
+          userMessage: prompt,
+          projectMode: true,
+          storyBibleMode: false
+        },
+        (chunk: string) => {
+          appendToLastAssistantMessage(chunk)
+        }
+      )
+    } catch (err) {
+      setAIError(err instanceof Error ? err.message : 'Generation failed')
+    } finally {
+      setAILoading(false)
+    }
+  }
 
   const runPassiveVoice = (): void => {
     if (!hasFile) return
@@ -125,74 +187,114 @@ export function AnalysisToolbar(): JSX.Element {
   return (
     <div className="toolbar">
       <div className="toolbar-left">
-        <button
-          className={`toolbar-btn${analysisMode === 'passive_voice' ? ' active' : ''}`}
-          onClick={runPassiveVoice}
-          disabled={!hasFile}
-          title="Highlight passive voice sentences instantly (no AI required)"
-        >
-          Passive Voice
-          {passiveCount > 0 && (
-            <span className="toolbar-badge">{passiveCount}</span>
-          )}
-        </button>
+        {isStoryBible ? (
+          <>
+            <span className="toolbar-bible-label">Generate from manuscript:</span>
+            <button
+              className="toolbar-btn toolbar-btn-bible"
+              onClick={() => runBibleGeneration(BIBLE_PROMPTS.full)}
+              disabled={isAILoading}
+              title="Generate all story bible sections from the full manuscript"
+            >
+              {isAILoading ? 'Generating…' : 'Full bible'}
+            </button>
+            <button
+              className="toolbar-btn toolbar-btn-bible"
+              onClick={() => runBibleGeneration(BIBLE_PROMPTS.characters)}
+              disabled={isAILoading}
+              title="Extract character profiles from the manuscript"
+            >
+              Characters
+            </button>
+            <button
+              className="toolbar-btn toolbar-btn-bible"
+              onClick={() => runBibleGeneration(BIBLE_PROMPTS.timeline)}
+              disabled={isAILoading}
+              title="Extract timeline of events from the manuscript"
+            >
+              Timeline
+            </button>
+            <button
+              className="toolbar-btn toolbar-btn-bible"
+              onClick={() => runBibleGeneration(BIBLE_PROMPTS.world)}
+              disabled={isAILoading}
+              title="Extract world & setting details from the manuscript"
+            >
+              World
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              className={`toolbar-btn${analysisMode === 'passive_voice' ? ' active' : ''}`}
+              onClick={runPassiveVoice}
+              disabled={!hasFile}
+              title="Highlight passive voice sentences instantly (no AI required)"
+            >
+              Passive Voice
+              {passiveCount > 0 && (
+                <span className="toolbar-badge">{passiveCount}</span>
+              )}
+            </button>
 
-        <button
-          className={`toolbar-btn${analysisMode === 'consistency' ? ' active' : ''}`}
-          onClick={() => runAIAnalysis('consistency')}
-          disabled={!hasFile || isAILoading}
-          title="Check character names, timeline, and repeated phrases via AI"
-        >
-          {isAILoading && analysisMode === 'consistency' ? 'Checking…' : 'Consistency'}
-          {consistencyCount > 0 && (
-            <span className="toolbar-badge">{consistencyCount}</span>
-          )}
-        </button>
+            <button
+              className={`toolbar-btn${analysisMode === 'consistency' ? ' active' : ''}`}
+              onClick={() => runAIAnalysis('consistency')}
+              disabled={!hasFile || isAILoading}
+              title="Check character names, timeline, and repeated phrases via AI"
+            >
+              {isAILoading && analysisMode === 'consistency' ? 'Checking…' : 'Consistency'}
+              {consistencyCount > 0 && (
+                <span className="toolbar-badge">{consistencyCount}</span>
+              )}
+            </button>
 
-        <button
-          className={`toolbar-btn${analysisMode === 'style' ? ' active' : ''}`}
-          onClick={() => runAIAnalysis('style')}
-          disabled={!hasFile || isAILoading}
-          title="Pacing, sentence variety, show-don't-tell feedback via AI"
-        >
-          {isAILoading && analysisMode === 'style' ? 'Analyzing…' : 'Style'}
-          {styleCount > 0 && (
-            <span className="toolbar-badge">{styleCount}</span>
-          )}
-        </button>
+            <button
+              className={`toolbar-btn${analysisMode === 'style' ? ' active' : ''}`}
+              onClick={() => runAIAnalysis('style')}
+              disabled={!hasFile || isAILoading}
+              title="Pacing, sentence variety, show-don't-tell feedback via AI"
+            >
+              {isAILoading && analysisMode === 'style' ? 'Analyzing…' : 'Style'}
+              {styleCount > 0 && (
+                <span className="toolbar-badge">{styleCount}</span>
+              )}
+            </button>
 
-        <button
-          className={`toolbar-btn${analysisMode === 'show_tell' ? ' active' : ''}`}
-          onClick={() => runAIAnalysis('show_tell')}
-          disabled={!hasFile || isAILoading}
-          title="Find passages that tell rather than show via AI"
-        >
-          {isAILoading && analysisMode === 'show_tell' ? 'Reading…' : 'Show vs Tell'}
-          {showTellCount > 0 && (
-            <span className="toolbar-badge">{showTellCount}</span>
-          )}
-        </button>
+            <button
+              className={`toolbar-btn${analysisMode === 'show_tell' ? ' active' : ''}`}
+              onClick={() => runAIAnalysis('show_tell')}
+              disabled={!hasFile || isAILoading}
+              title="Find passages that tell rather than show via AI"
+            >
+              {isAILoading && analysisMode === 'show_tell' ? 'Reading…' : 'Show vs Tell'}
+              {showTellCount > 0 && (
+                <span className="toolbar-badge">{showTellCount}</span>
+              )}
+            </button>
 
-        <button
-          className={`toolbar-btn${analysisMode === 'critique' ? ' active' : ''}`}
-          onClick={() => runAIAnalysis('critique')}
-          disabled={!hasFile || isAILoading}
-          title="Honest overall critique of this chapter via AI"
-        >
-          {isAILoading && analysisMode === 'critique' ? 'Reading…' : 'Critique'}
-          {critiqueCount > 0 && (
-            <span className="toolbar-badge">{critiqueCount}</span>
-          )}
-        </button>
+            <button
+              className={`toolbar-btn${analysisMode === 'critique' ? ' active' : ''}`}
+              onClick={() => runAIAnalysis('critique')}
+              disabled={!hasFile || isAILoading}
+              title="Honest overall critique of this chapter via AI"
+            >
+              {isAILoading && analysisMode === 'critique' ? 'Reading…' : 'Critique'}
+              {critiqueCount > 0 && (
+                <span className="toolbar-badge">{critiqueCount}</span>
+              )}
+            </button>
 
-        {annotations.length > 0 && (
-          <button
-            className="toolbar-btn toolbar-btn-clear"
-            onClick={() => { clearAnnotations(); tooltipAnalysisCache.clear() }}
-            title="Remove all highlights"
-          >
-            Clear
-          </button>
+            {annotations.length > 0 && (
+              <button
+                className="toolbar-btn toolbar-btn-clear"
+                onClick={() => { clearAnnotations(); tooltipAnalysisCache.clear() }}
+                title="Remove all highlights"
+              >
+                Clear
+              </button>
+            )}
+          </>
         )}
       </div>
 

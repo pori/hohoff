@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { AIPayload, Attachment } from '../renderer/types/editor'
+import type { DraftDocument } from './fileSystem'
 
 let _client: Anthropic | null = null
 
@@ -16,11 +17,78 @@ if (!apiKey || apiKey === 'your-api-key-here') {
   return _client
 }
 
-function buildSystemPrompt(payload: AIPayload): string {
+const MAX_MANUSCRIPT_CHARS = 560_000 // ~140k tokens at 4 chars/token
+
+function buildStoryBibleBlock(content: string): string {
+  return [
+    '=== STORY BIBLE ===',
+    "The following is the author's curated reference document. Treat it as authoritative ground truth for characters, world, timeline, and consistency rules.",
+    '',
+    content,
+    '=== END STORY BIBLE ==='
+  ].join('\n')
+}
+
+function buildManuscriptBlock(allDocs: DraftDocument[], currentPath: string): string {
+  const total = allDocs.length
+  const totalChars = allDocs.reduce((s, d) => s + d.content.length, 0)
+  let docs = allDocs
+  let truncatedCount = 0
+
+  if (totalChars > MAX_MANUSCRIPT_CHARS) {
+    const currentIdx = allDocs.findIndex(d => d.path === currentPath)
+    const pivot = currentIdx !== -1 ? currentIdx : 0
+    const priority: number[] = [pivot]
+    let lo = pivot - 1
+    let hi = pivot + 1
+    while (lo >= 0 || hi < allDocs.length) {
+      if (hi < allDocs.length) priority.push(hi++)
+      if (lo >= 0) priority.push(lo--)
+    }
+    let budget = MAX_MANUSCRIPT_CHARS
+    const included = new Set<number>()
+    for (const idx of priority) {
+      if (budget <= 0) break
+      if (budget - allDocs[idx].content.length >= 0) {
+        budget -= allDocs[idx].content.length
+        included.add(idx)
+      }
+    }
+    truncatedCount = allDocs.length - included.size
+    docs = allDocs.filter((_, i) => included.has(i))
+  }
+
+  const lines: string[] = [
+    '=== MANUSCRIPT: Full Story Context ===',
+    `The following ${docs.length} chapter(s) contain the novel in narrative order.`,
+    'Use them for cross-chapter analysis: consistency, character arcs, narrative structure.',
+    ''
+  ]
+  for (let i = 0; i < docs.length; i++) {
+    lines.push(`--- [${i + 1}/${total}] ${docs[i].relativePath} ---`)
+    lines.push(docs[i].content)
+    lines.push('')
+  }
+  if (truncatedCount > 0) {
+    lines.push(`[Note: ${truncatedCount} chapter(s) omitted to fit context. Chapters closest to the current chapter were prioritised.]`)
+  }
+  lines.push('=== END MANUSCRIPT ===')
+  return lines.join('\n')
+}
+
+function buildSystemPrompt(payload: AIPayload, allDocs?: DraftDocument[], storyBibleContent?: string): string {
   const chapterName =
     payload.documentPath.split('/').pop()?.replace(/\.md$/, '') ?? 'Unknown chapter'
 
-  const chapterContext = `You are a literary editor assistant helping with a gothic/historical fiction novel set in the Basque Country. The current chapter is: "${chapterName}".
+  const storyBibleSection = storyBibleContent
+    ? buildStoryBibleBlock(storyBibleContent) + '\n\n'
+    : ''
+
+  const manuscriptSection = allDocs
+    ? buildManuscriptBlock(allDocs, payload.documentPath) + '\n\n'
+    : ''
+
+  const chapterContext = `${storyBibleSection}${manuscriptSection}You are a literary editor assistant helping with a gothic/historical fiction novel set in the Basque Country. The current chapter is: "${chapterName}".
 
 Key characters: Esti, Marko, Garbi, Irati, Cardinal Nikolai, Amaya, Izotz, Sua, Señor Jiménez, the Genboa family.
 
@@ -165,6 +233,8 @@ function buildUserContent(
 
 export async function streamMessage(
   payload: AIPayload,
+  allDocs: DraftDocument[] | undefined,
+  storyBibleContent: string | undefined,
   onChunk: (chunk: string) => void
 ): Promise<void> {
   const client = getClient()
@@ -180,7 +250,7 @@ export async function streamMessage(
   const stream = client.messages.stream({
     model: 'claude-sonnet-4-5',
     max_tokens: 4096,
-    system: buildSystemPrompt(payload),
+    system: buildSystemPrompt(payload, allDocs, storyBibleContent),
     messages
   })
 

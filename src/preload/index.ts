@@ -84,5 +84,11 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.invoke('fs:createDir', parentPath, name),
 
   moveFile: (sourcePath: string, targetDirPath: string): Promise<string> =>
-    ipcRenderer.invoke('fs:move', sourcePath, targetDirPath)
+    ipcRenderer.invoke('fs:move', sourcePath, targetDirPath),
+
+  openStoryBible: (): Promise<{ path: string; content: string }> =>
+    ipcRenderer.invoke('fs:openStoryBible'),
+
+  writeStoryBible: (content: string): Promise<void> =>
+    ipcRenderer.invoke('fs:writeStoryBible', content)
 })

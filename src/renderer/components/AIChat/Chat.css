@@ -77,6 +77,40 @@
   flex-shrink: 0;
 }
 
+/* ── Whole story context bar ─────────────────────────────────────── */
+.chat-context-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.chat-project-toggle {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.chat-project-toggle:hover {
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
+.chat-project-toggle--active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
 /* ── Chat sub-header (History link + New Chat button) ────────────── */
 .chat-subheader {
   display: flex;
@@ -633,4 +667,26 @@
   border-radius: 3px;
   padding: 1px 5px;
   flex-shrink: 0;
+}
+
+/* ── Apply-to-bible action ───────────────────────────────────────── */
+.chat-message-apply {
+  margin-top: 10px;
+}
+
+.chat-apply-btn {
+  background: none;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.chat-apply-btn:hover {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
 }

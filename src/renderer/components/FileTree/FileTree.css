@@ -6,6 +6,9 @@
 }
 
 .file-tree-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: 14px 12px 10px;
   font-size: 11px;
   font-weight: 700;
@@ -13,6 +16,22 @@
   color: var(--text-muted);
   border-bottom: 1px solid var(--border);
   text-transform: uppercase;
+}
+
+.file-tree-bible-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+  opacity: 0.55;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+
+.file-tree-bible-btn:hover {
+  opacity: 1;
 }
 
 .file-tree-list {

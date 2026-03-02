@@ -8,6 +8,31 @@ const DRAFT_ROOT =
 const ORDER_FILE = join(DRAFT_ROOT, '.order.json')
 const SESSION_FILE = join(DRAFT_ROOT, '.session.json')
 const REVISIONS_DIR = join(DRAFT_ROOT, '.revisions')
+const HOHOFF_DIR = join(DRAFT_ROOT, '.hohoff')
+export const STORY_BIBLE_PATH = join(HOHOFF_DIR, 'Story Bible.md')
+
+const STORY_BIBLE_TEMPLATE = `# Story Bible
+
+## Characters
+
+<!-- Profile each character: role, appearance, personality, arc, key relationships -->
+
+## World & Setting
+
+<!-- The Basque Country: geography, historical period, cultural details, atmosphere -->
+
+## Timeline
+
+<!-- Key events in chronological order -->
+
+## Themes & Motifs
+
+<!-- Recurring symbols, imagery, thematic concerns -->
+
+## Continuity Rules
+
+<!-- Facts Claude must always respect: established plot points, internal logic, naming conventions -->
+`
 
 const MAX_REVISIONS = 50
 
@@ -120,6 +145,60 @@ export async function writeMarkdownFile(filePath: string, content: string): Prom
 
 function countWords(text: string): number {
   return text.trim() === '' ? 0 : text.trim().split(/\s+/).length
+}
+
+export interface DraftDocument {
+  path: string
+  relativePath: string // e.g. "Part I/Chapter 1"
+  content: string
+}
+
+function flattenFileNodes(nodes: FileNode[]): string[] {
+  const paths: string[] = []
+  for (const node of nodes) {
+    if (node.type === 'file') paths.push(node.path)
+    else if (node.children) paths.push(...flattenFileNodes(node.children))
+  }
+  return paths
+}
+
+export async function readAllDraftFiles(): Promise<DraftDocument[]> {
+  const tree = await listDraftFiles()
+  // Exclude Story Bible.md — it is injected separately via readStoryBibleFile()
+  const paths = flattenFileNodes(tree).filter(p => p !== STORY_BIBLE_PATH)
+  const prefix = DRAFT_ROOT + '/'
+  return Promise.all(
+    paths.map(async (p) => ({
+      path: p,
+      relativePath: (p.startsWith(prefix) ? p.slice(prefix.length) : p).replace(/\.md$/, ''),
+      content: await readFile(p, 'utf-8')
+    }))
+  )
+}
+
+export async function openStoryBibleFile(): Promise<{ path: string; content: string }> {
+  await mkdir(HOHOFF_DIR, { recursive: true })
+  let content: string
+  try {
+    content = await readFile(STORY_BIBLE_PATH, 'utf-8')
+  } catch {
+    content = STORY_BIBLE_TEMPLATE
+    await writeFile(STORY_BIBLE_PATH, content, 'utf-8')
+  }
+  return { path: STORY_BIBLE_PATH, content }
+}
+
+export async function writeStoryBibleFile(content: string): Promise<void> {
+  await mkdir(HOHOFF_DIR, { recursive: true })
+  await writeFile(STORY_BIBLE_PATH, content, 'utf-8')
+}
+
+export async function readStoryBibleFile(): Promise<string | null> {
+  try {
+    return await readFile(STORY_BIBLE_PATH, 'utf-8')
+  } catch {
+    return null
+  }
 }
 
 async function collectMarkdownPaths(dir: string): Promise<string[]> {
