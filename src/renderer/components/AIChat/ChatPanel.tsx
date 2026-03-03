@@ -42,10 +42,6 @@ export function ChatPanel(): JSX.Element {
     setActiveSession,
     rightPanelTab,
     setRightPanelTab,
-    wholeStoryMode,
-    setWholeStoryMode,
-    storyBibleMode,
-    setStoryBibleMode,
   } = useEditorStore()
 
   const tab = rightPanelTab
@@ -89,9 +85,7 @@ export function ChatPanel(): JSX.Element {
             .slice(-10)
             .map((m) => ({ role: m.role, content: m.content })),
           userMessage: text,
-          attachments: attachments.length > 0 ? attachments : undefined,
-          projectMode: wholeStoryMode,
-          storyBibleMode: storyBibleMode
+          attachments: attachments.length > 0 ? attachments : undefined
         },
         (chunk: string) => {
           appendToLastAssistantMessage(chunk)
@@ -164,25 +158,6 @@ export function ChatPanel(): JSX.Element {
         </button>
       </div>
 
-      {/* ── Context toggles: Story bible + Whole story ── */}
-      {tab === 'chat' && hasFile && (
-        <div className="chat-context-bar">
-          <button
-            className={`chat-project-toggle${storyBibleMode ? ' chat-project-toggle--active' : ''}`}
-            onClick={() => setStoryBibleMode(!storyBibleMode)}
-            title={storyBibleMode ? 'Story bible on — Claude sees your reference notes' : 'Enable story bible context'}
-          >
-            {storyBibleMode ? '◉' : '○'} Story bible
-          </button>
-          <button
-            className={`chat-project-toggle${wholeStoryMode ? ' chat-project-toggle--active' : ''}`}
-            onClick={() => setWholeStoryMode(!wholeStoryMode)}
-            title={wholeStoryMode ? 'Whole story on — Claude sees all chapters' : 'Enable whole story context'}
-          >
-            {wholeStoryMode ? '◉' : '○'} Whole story
-          </button>
-        </div>
-      )}
 
       {/* ── Chat sub-header: History link + New Chat button ── */}
       {showSubheader && (

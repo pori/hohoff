@@ -4,13 +4,12 @@ import { FileTreeNode } from './FileTreeNode'
 import './FileTree.css'
 
 export function FileTree(): JSX.Element {
-  const { fileTree, activeFilePath, setActiveFile, markSaved, setStoryBibleMode } = useEditorStore()
+  const { fileTree, activeFilePath, setActiveFile, markSaved } = useEditorStore()
 
   const handleOpenStoryBible = async (): Promise<void> => {
     try {
       const { path, content } = await window.api.openStoryBible()
       setActiveFile(path, content)
-      setStoryBibleMode(true)
       // If the path didn't change (already on Story Bible), the MarkdownEditor's
       // activeFilePath-keyed effect won't fire. Push content directly, same
       // pattern as RevisionPanel.restore().

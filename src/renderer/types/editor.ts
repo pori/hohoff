@@ -57,8 +57,6 @@ export interface AIPayload {
   conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>
   userMessage: string
   attachments?: Attachment[] // full data for current API call only
-  projectMode?: boolean // when true, main process injects all draft files as context
-  storyBibleMode?: boolean // when true, main process injects Story Bible.md as context
 }
 
 export interface RevisionMeta {

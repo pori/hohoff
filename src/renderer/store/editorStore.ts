@@ -71,14 +71,6 @@ interface EditorState {
   theme: 'dark' | 'light'
   toggleTheme: () => void
 
-  // Whole story context mode
-  wholeStoryMode: boolean
-  setWholeStoryMode: (enabled: boolean) => void
-
-  // Story bible context mode
-  storyBibleMode: boolean
-  setStoryBibleMode: (enabled: boolean) => void
-
   // Revision panel
   revisionPanelOpen: boolean
   toggleRevisionPanel: () => void
@@ -548,18 +540,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       document.documentElement.classList.toggle('light', next === 'light')
       return { theme: next }
     })
-  },
-
-  wholeStoryMode: localStorage.getItem('wholeStoryMode') === 'true',
-  setWholeStoryMode: (enabled: boolean) => {
-    localStorage.setItem('wholeStoryMode', String(enabled))
-    set({ wholeStoryMode: enabled })
-  },
-
-  storyBibleMode: localStorage.getItem('storyBibleMode') === 'true',
-  setStoryBibleMode: (enabled: boolean) => {
-    localStorage.setItem('storyBibleMode', String(enabled))
-    set({ storyBibleMode: enabled })
   },
 
   loadSession: async () => {

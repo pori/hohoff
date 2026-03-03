@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { AIPayload, Attachment } from '../renderer/types/editor'
 import type { DraftDocument } from './fileSystem'
+import { readAllDraftFiles } from './fileSystem'
 
 let _client: Anthropic | null = null
 
@@ -18,6 +19,15 @@ if (!apiKey || apiKey === 'your-api-key-here') {
 }
 
 const MAX_MANUSCRIPT_CHARS = 560_000 // ~140k tokens at 4 chars/token
+
+const getManuscriptTool: Anthropic.Tool = {
+  name: 'get_manuscript',
+  description:
+    'Fetches all draft chapters in narrative order. ' +
+    'Call this when the user asks about events, characters, or passages beyond the current chapter, ' +
+    'or when a cross-chapter analysis (consistency, arcs, narrative structure) would benefit from the full novel.',
+  input_schema: { type: 'object', properties: {}, required: [] }
+}
 
 function buildStoryBibleBlock(content: string): string {
   return [
@@ -76,7 +86,7 @@ function buildManuscriptBlock(allDocs: DraftDocument[], currentPath: string): st
   return lines.join('\n')
 }
 
-function buildSystemPrompt(payload: AIPayload, allDocs?: DraftDocument[], storyBibleContent?: string): string {
+function buildSystemPrompt(payload: AIPayload, storyBibleContent?: string): string {
   const chapterName =
     payload.documentPath.split('/').pop()?.replace(/\.md$/, '') ?? 'Unknown chapter'
 
@@ -84,11 +94,7 @@ function buildSystemPrompt(payload: AIPayload, allDocs?: DraftDocument[], storyB
     ? buildStoryBibleBlock(storyBibleContent) + '\n\n'
     : ''
 
-  const manuscriptSection = allDocs
-    ? buildManuscriptBlock(allDocs, payload.documentPath) + '\n\n'
-    : ''
-
-  const chapterContext = `${storyBibleSection}${manuscriptSection}You are a literary editor assistant helping with a gothic/historical fiction novel set in the Basque Country. The current chapter is: "${chapterName}".
+  const chapterContext = `${storyBibleSection}You are a literary editor assistant helping with a gothic/historical fiction novel set in the Basque Country. The current chapter is: "${chapterName}".
 
 Key characters: Esti, Marko, Garbi, Irati, Cardinal Nikolai, Amaya, Izotz, Sua, Señor Jiménez, the Genboa family.
 
@@ -233,7 +239,6 @@ function buildUserContent(
 
 export async function streamMessage(
   payload: AIPayload,
-  allDocs: DraftDocument[] | undefined,
   storyBibleContent: string | undefined,
   onChunk: (chunk: string) => void
 ): Promise<void> {
@@ -247,10 +252,14 @@ export async function streamMessage(
     }
   ]
 
+  const systemPrompt = buildSystemPrompt(payload, storyBibleContent)
+
+  // Phase 1 — initial response, with get_manuscript tool available
   const stream = client.messages.stream({
     model: 'claude-sonnet-4-5',
     max_tokens: 4096,
-    system: buildSystemPrompt(payload, allDocs, storyBibleContent),
+    system: systemPrompt,
+    tools: [getManuscriptTool],
     messages
   })
 
@@ -260,6 +269,53 @@ export async function streamMessage(
       chunk.delta.type === 'text_delta'
     ) {
       onChunk(chunk.delta.text)
+    }
+  }
+
+  const finalMsg = await stream.finalMessage()
+
+  // Phase 2 — only if Claude requested the manuscript
+  if (finalMsg.stop_reason === 'tool_use') {
+    const toolUse = finalMsg.content.find(
+      (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use' && b.name === 'get_manuscript'
+    )
+    if (toolUse) {
+      onChunk('\n\n*Reading manuscript…*\n\n')
+
+      const allDocs = await readAllDraftFiles()
+      const manuscriptText = buildManuscriptBlock(allDocs, payload.documentPath)
+
+      const stream2 = client.messages.stream({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 4096,
+        system: systemPrompt,
+        tools: [getManuscriptTool],
+        messages: [
+          ...messages,
+          { role: 'assistant', content: finalMsg.content },
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'tool_result',
+                tool_use_id: toolUse.id,
+                content: manuscriptText
+              }
+            ]
+          }
+        ]
+      })
+
+      for await (const chunk of stream2) {
+        if (
+          chunk.type === 'content_block_delta' &&
+          chunk.delta.type === 'text_delta'
+        ) {
+          onChunk(chunk.delta.text)
+        }
+      }
+
+      await stream2.finalMessage()
     }
   }
 }
