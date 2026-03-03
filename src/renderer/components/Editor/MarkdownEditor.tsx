@@ -439,7 +439,7 @@ export function MarkdownEditor(): JSX.Element {
   const [hasSelection, setHasSelection] = useState(false)
   const [pendingComment, setPendingComment] = useState<{ from: number; to: number; text: string } | null>(null)
   const [commentDraft, setCommentDraft] = useState('')
-  const { activeFilePath, activeFileContent, setContent, annotations, fontSize, theme, scrollPositions } = useEditorStore()
+  const { activeFilePath, activeFileContent, setContent, annotations, fontSize, theme, scrollPositions, pendingScrollToLine, clearPendingScrollToLine } = useEditorStore()
 
   function saveComment(): void {
     if (!pendingComment || !commentDraft.trim()) return
@@ -624,6 +624,18 @@ export function MarkdownEditor(): JSX.Element {
       annotations: [Transaction.addToHistory.of(false)]
     })
   }, [annotations])
+
+  // Scroll to line requested by project search navigation
+  useEffect(() => {
+    if (pendingScrollToLine === null) return
+    const view = viewRef.current
+    if (!view) return
+    const lineCount = view.state.doc.lines
+    const lineNum = Math.max(1, Math.min(pendingScrollToLine, lineCount))
+    const line = view.state.doc.line(lineNum)
+    view.dispatch({ effects: EditorView.scrollIntoView(line.from, { y: 'center' }) })
+    clearPendingScrollToLine()
+  }, [pendingScrollToLine])
 
   // Reconfigure theme when font size or colour theme changes
   useEffect(() => {

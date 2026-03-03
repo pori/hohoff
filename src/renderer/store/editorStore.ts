@@ -85,6 +85,16 @@ interface EditorState {
   outlineOpen: boolean
   toggleOutline: () => void
 
+  // Project search
+  projectSearchOpen: boolean
+  openProjectSearch: () => void
+  closeProjectSearch: () => void
+
+  // Scroll-to-line (set when navigating to a search result)
+  pendingScrollToLine: number | null
+  scrollEditorToLine: (line: number) => void
+  clearPendingScrollToLine: () => void
+
   // Session persistence
   loadSession: () => Promise<void>
 }
@@ -553,6 +563,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       return { theme: next }
     })
   },
+
+  projectSearchOpen: false,
+  openProjectSearch: () => set({ projectSearchOpen: true }),
+  closeProjectSearch: () => set({ projectSearchOpen: false }),
+
+  pendingScrollToLine: null,
+  scrollEditorToLine: (line) => set({ pendingScrollToLine: line }),
+  clearPendingScrollToLine: () => set({ pendingScrollToLine: null }),
 
   loadSession: async () => {
     const api = (window as unknown as { api?: { readSession: () => Promise<Record<string, unknown>>; readFile: (p: string) => Promise<string> } }).api

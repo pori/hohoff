@@ -64,3 +64,16 @@ export interface RevisionMeta {
   timestamp: number
   wordCount: number
 }
+
+export interface SearchMatch {
+  lineNumber: number   // 1-based
+  lineText: string
+  matchStart: number   // offset within lineText
+  matchEnd: number
+}
+
+export interface SearchFileResult {
+  filePath: string
+  relativePath: string
+  matches: SearchMatch[]
+}

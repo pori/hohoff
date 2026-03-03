@@ -1,0 +1,281 @@
+/* ─── Project Search Modal ───────────────────────────────────────── */
+
+.ps-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 80px;
+}
+
+.ps-modal {
+  background: var(--sidebar-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  width: 640px;
+  max-width: calc(100vw - 48px);
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+/* ─── Header inputs ──────────────────────────────────────────────── */
+
+.ps-header {
+  padding: 12px 12px 10px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ps-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ps-input {
+  flex: 1;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: var(--font-sans);
+  padding: 5px 8px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.ps-input:focus {
+  border-color: var(--accent);
+}
+
+.ps-input::placeholder {
+  color: var(--text-muted);
+}
+
+/* Option toggle buttons (Aa / W / .*) */
+.ps-opt {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  padding: 4px 6px;
+  cursor: pointer;
+  line-height: 1;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  white-space: nowrap;
+}
+
+.ps-opt:hover {
+  color: var(--text-secondary);
+  border-color: var(--text-muted);
+}
+
+.ps-opt.active {
+  background: var(--active-bg);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Close button */
+.ps-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+  line-height: 1;
+  transition: color 0.12s;
+  margin-left: 2px;
+}
+
+.ps-close:hover {
+  color: var(--text-primary);
+}
+
+/* Replace All button */
+.ps-replace-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-family: var(--font-sans);
+  padding: 4px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.12s, color 0.12s;
+}
+
+.ps-replace-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.ps-replace-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ─── Results ────────────────────────────────────────────────────── */
+
+.ps-results {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.ps-empty {
+  padding: 24px 16px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-family: var(--font-sans);
+  text-align: center;
+}
+
+/* File group */
+.ps-file-group {
+  border-bottom: 1px solid var(--border);
+}
+
+.ps-file-group:last-child {
+  border-bottom: none;
+}
+
+.ps-file-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px 5px;
+  background: var(--toolbar-bg);
+  cursor: pointer;
+  user-select: none;
+}
+
+.ps-file-header:hover {
+  background: var(--hover-bg);
+}
+
+.ps-chevron {
+  color: var(--text-muted);
+  font-size: 9px;
+  width: 10px;
+  flex-shrink: 0;
+}
+
+.ps-file-name {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ps-match-count {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-family: var(--font-sans);
+  flex-shrink: 0;
+}
+
+.ps-file-replace-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-family: var(--font-sans);
+  padding: 2px 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color 0.12s, color 0.12s;
+}
+
+.ps-file-replace-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Match rows */
+.ps-matches {
+  display: flex;
+  flex-direction: column;
+}
+
+.ps-match-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0;
+  padding: 3px 10px 3px 20px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: monospace;
+  transition: background 0.1s;
+}
+
+.ps-match-row:hover {
+  background: var(--hover-bg);
+}
+
+.ps-line-num {
+  color: var(--text-muted);
+  min-width: 36px;
+  flex-shrink: 0;
+  text-align: right;
+  padding-right: 10px;
+  font-size: 11px;
+  user-select: none;
+}
+
+.ps-line-text {
+  color: var(--text-secondary);
+  white-space: pre;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ps-line-text mark {
+  background: rgba(167, 139, 95, 0.35);
+  color: var(--accent-hover);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+/* ─── Footer ─────────────────────────────────────────────────────── */
+
+.ps-footer {
+  border-top: 1px solid var(--border);
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ps-stats {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-family: var(--font-sans);
+}
+
+.ps-error {
+  color: #c0624a;
+  font-size: 11px;
+  font-family: var(--font-sans);
+}

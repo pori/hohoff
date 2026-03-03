@@ -1,4 +1,10 @@
-import type { FileNode, AIPayload, RevisionMeta, Attachment } from './editor'
+import type { FileNode, AIPayload, RevisionMeta, Attachment, SearchFileResult } from './editor'
+
+interface SearchOptions {
+  caseSensitive: boolean
+  wholeWord: boolean
+  isRegex: boolean
+}
 
 declare global {
   interface Window {
@@ -26,6 +32,8 @@ declare global {
       openStoryBible: () => Promise<{ path: string; content: string }>
       writeStoryBible: (content: string) => Promise<string>
       onMenuAction: (handler: (action: string) => void) => () => void
+      searchFiles: (query: string, options: SearchOptions) => Promise<SearchFileResult[]>
+      replaceInFiles: (query: string, replacement: string, options: SearchOptions, filePaths: string[]) => Promise<string[]>
     }
   }
 }

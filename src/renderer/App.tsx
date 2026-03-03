@@ -5,13 +5,15 @@ import { DocumentOutline } from './components/Editor/DocumentOutline'
 import { ChatPanel } from './components/AIChat/ChatPanel'
 import { AnalysisToolbar } from './components/Toolbar/AnalysisToolbar'
 import { RevisionPanel } from './components/Revisions/RevisionPanel'
+import { ProjectSearchModal } from './components/Search/ProjectSearchModal'
 import { useEditorStore } from './store/editorStore'
 import './styles/app.css'
 
 export default function App(): JSX.Element {
   const {
     setFileTree, activeFilePath, isDirty, markSaved, activeFileContent, theme, toggleTheme,
-    loadSession, revisionPanelOpen, toggleRevisionPanel, fontSize, setFontSize
+    loadSession, revisionPanelOpen, toggleRevisionPanel, fontSize, setFontSize,
+    openProjectSearch
   } = useEditorStore()
   const [sidebarOpen, setSidebarOpen] = useState(
     () => localStorage.getItem('sidebarOpen') !== 'false'
@@ -50,11 +52,13 @@ export default function App(): JSX.Element {
         setFontSize(fontSize - 1)
       } else if (action === 'fontReset') {
         setFontSize(15)
+      } else if (action === 'projectSearch') {
+        openProjectSearch()
       }
     })
   }, [activeFilePath, isDirty, activeFileContent, fontSize])
 
-  // Handle Cmd+S / Ctrl+S
+  // Handle Cmd+S / Ctrl+S and Cmd+Shift+F / Ctrl+Shift+F
   useEffect(() => {
     const handler = async (e: KeyboardEvent): Promise<void> => {
       if ((e.metaKey || e.ctrlKey) && e.key === 's') {
@@ -64,6 +68,9 @@ export default function App(): JSX.Element {
           await window.api.saveRevision(activeFilePath, activeFileContent)
           markSaved()
         }
+      } else if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'f') {
+        e.preventDefault()
+        openProjectSearch()
       }
     }
     window.addEventListener('keydown', handler)
@@ -124,6 +131,7 @@ export default function App(): JSX.Element {
       <aside className="chat-area">
         <ChatPanel />
       </aside>
+      <ProjectSearchModal />
     </div>
   )
 }

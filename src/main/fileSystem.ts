@@ -1,6 +1,6 @@
 import { readdir, readFile, writeFile, mkdir, unlink, rename as fsRename, rm } from 'fs/promises'
 import { join, dirname, basename } from 'path'
-import type { FileNode, RevisionMeta } from '../renderer/types/editor'
+import type { FileNode, RevisionMeta, SearchMatch, SearchFileResult } from '../renderer/types/editor'
 
 const DRAFT_ROOT =
   process.env.DRAFT_PATH ?? '/Users/pori/WebstormProjects/hohoff/draft'
@@ -406,4 +406,86 @@ export async function moveFileOrDir(sourcePath: string, targetDirPath: string): 
   if (newPath === sourcePath) return sourcePath
   await fsRename(sourcePath, newPath)
   return newPath
+}
+
+// ─── Project search/replace ───────────────────────────────────────────────────
+
+export interface SearchOptions {
+  caseSensitive: boolean
+  wholeWord: boolean
+  isRegex: boolean
+}
+
+function buildSearchRegex(query: string, opts: SearchOptions): RegExp {
+  let pattern = opts.isRegex ? query : query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  if (opts.wholeWord) pattern = `\\b${pattern}\\b`
+  const flags = opts.caseSensitive ? 'g' : 'gi'
+  return new RegExp(pattern, flags)
+}
+
+function searchFileContent(content: string, regex: RegExp, filePath: string, relativePath: string): SearchFileResult | null {
+  const lines = content.split('\n')
+  const matches: SearchMatch[] = []
+  for (let i = 0; i < lines.length; i++) {
+    const lineText = lines[i]
+    regex.lastIndex = 0
+    let m: RegExpExecArray | null
+    while ((m = regex.exec(lineText)) !== null) {
+      matches.push({
+        lineNumber: i + 1,
+        lineText,
+        matchStart: m.index,
+        matchEnd: m.index + m[0].length
+      })
+      if (!regex.global) break
+    }
+  }
+  if (matches.length === 0) return null
+  return { filePath, relativePath, matches }
+}
+
+export async function searchAcrossFiles(query: string, opts: SearchOptions): Promise<SearchFileResult[]> {
+  if (!query) return []
+  const regex = buildSearchRegex(query, opts)
+  const docs = await readAllDraftFiles()
+  const results: SearchFileResult[] = []
+
+  for (const doc of docs) {
+    const result = searchFileContent(doc.content, regex, doc.path, doc.relativePath)
+    if (result) results.push(result)
+  }
+
+  // Also search the Story Bible
+  const bibleContent = await readStoryBibleFile()
+  if (bibleContent !== null) {
+    const prefix = DRAFT_ROOT + '/'
+    const rel = (STORY_BIBLE_PATH.startsWith(prefix) ? STORY_BIBLE_PATH.slice(prefix.length) : STORY_BIBLE_PATH).replace(/\.md$/, '')
+    const result = searchFileContent(bibleContent, regex, STORY_BIBLE_PATH, rel)
+    if (result) results.push(result)
+  }
+
+  return results
+}
+
+export async function replaceInFiles(
+  query: string,
+  replacement: string,
+  opts: SearchOptions,
+  filePaths: string[]
+): Promise<string[]> {
+  if (!query) return []
+  const regex = buildSearchRegex(query, opts)
+  const modified: string[] = []
+  for (const filePath of filePaths) {
+    assertInDraftRoot(filePath)
+    const original = await readFile(filePath, 'utf-8')
+    regex.lastIndex = 0
+    const updated = original.replace(regex, replacement)
+    if (updated !== original) {
+      await saveRevision(filePath, original)
+      await writeFile(filePath, updated, 'utf-8')
+      modified.push(filePath)
+    }
+  }
+  return modified
 }

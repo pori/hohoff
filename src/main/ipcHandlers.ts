@@ -1,7 +1,8 @@
 import { ipcMain, dialog, BrowserWindow } from 'electron'
 import { readFileSync } from 'fs'
 import { extname, basename } from 'path'
-import { listDraftFiles, readMarkdownFile, writeMarkdownFile, getProjectWordCount, saveOrderFile, readSession, writeSession, saveRevision, listRevisions, loadRevision, deleteRevision, renameFileOrDir, deleteFileOrDir, createMarkdownFile, createSubdirectory, moveFileOrDir, readStoryBibleFile, openStoryBibleFile, writeStoryBibleFile } from './fileSystem'
+import { listDraftFiles, readMarkdownFile, writeMarkdownFile, getProjectWordCount, saveOrderFile, readSession, writeSession, saveRevision, listRevisions, loadRevision, deleteRevision, renameFileOrDir, deleteFileOrDir, createMarkdownFile, createSubdirectory, moveFileOrDir, readStoryBibleFile, openStoryBibleFile, writeStoryBibleFile, searchAcrossFiles, replaceInFiles } from './fileSystem'
+import type { SearchOptions } from './fileSystem'
 import { streamMessage } from './aiService'
 import type { AIPayload, Attachment } from '../renderer/types/editor'
 
@@ -119,6 +120,14 @@ export function registerIpcHandlers(): void {
       }
     }
     return attachments
+  })
+
+  ipcMain.handle('fs:search', async (_event, query: string, opts: SearchOptions) => {
+    return await searchAcrossFiles(query, opts)
+  })
+
+  ipcMain.handle('fs:replace', async (_event, query: string, replacement: string, opts: SearchOptions, filePaths: string[]) => {
+    return await replaceInFiles(query, replacement, opts, filePaths)
   })
 
   ipcMain.handle('ai:streamMessage', async (event, payload: AIPayload) => {

@@ -1,5 +1,11 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { FileNode, AIPayload, RevisionMeta, Attachment } from '../renderer/types/editor'
+import type { FileNode, AIPayload, RevisionMeta, Attachment, SearchFileResult } from '../renderer/types/editor'
+
+interface SearchOptions {
+  caseSensitive: boolean
+  wholeWord: boolean
+  isRegex: boolean
+}
 
 contextBridge.exposeInMainWorld('api', {
   listFiles: (): Promise<FileNode[]> => ipcRenderer.invoke('fs:listFiles'),
@@ -96,5 +102,11 @@ contextBridge.exposeInMainWorld('api', {
     const listener = (_: Electron.IpcRendererEvent, action: string): void => handler(action)
     ipcRenderer.on('menu:action', listener)
     return () => ipcRenderer.removeListener('menu:action', listener)
-  }
+  },
+
+  searchFiles: (query: string, options: SearchOptions): Promise<SearchFileResult[]> =>
+    ipcRenderer.invoke('fs:search', query, options),
+
+  replaceInFiles: (query: string, replacement: string, options: SearchOptions, filePaths: string[]): Promise<string[]> =>
+    ipcRenderer.invoke('fs:replace', query, replacement, options, filePaths),
 })

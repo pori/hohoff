@@ -85,6 +85,11 @@ function buildAppMenu(win: BrowserWindow): void {
           label: 'Find / Replace',
           accelerator: 'CmdOrCtrl+F',
           click: () => send(win, 'find')
+        },
+        {
+          label: 'Project Find / Replace',
+          accelerator: 'Shift+CmdOrCtrl+F',
+          click: () => send(win, 'projectSearch')
         }
       ]
     },
