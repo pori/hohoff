@@ -217,6 +217,14 @@ const annotationHoverTooltip = hoverTooltip(
           label.className = 'annotation-tooltip-label'
           label.textContent = 'Your comment'
           dom.appendChild(label)
+          const dismissBtn = document.createElement('button')
+          dismissBtn.className = 'annotation-tooltip-dismiss'
+          dismissBtn.title = 'Dismiss'
+          dismissBtn.textContent = '×'
+          dismissBtn.addEventListener('click', () => {
+            useEditorStore.getState().removeAnnotation(ann.id)
+          })
+          dom.appendChild(dismissBtn)
           const divider = document.createElement('div')
           divider.className = 'annotation-tooltip-divider'
           dom.appendChild(divider)
@@ -240,6 +248,15 @@ const annotationHoverTooltip = hoverTooltip(
         label.className = 'annotation-tooltip-label'
         label.textContent = ann.type.replace(/_/g, ' ')
         dom.appendChild(label)
+
+        const dismissBtn = document.createElement('button')
+        dismissBtn.className = 'annotation-tooltip-dismiss'
+        dismissBtn.title = 'Dismiss'
+        dismissBtn.textContent = '×'
+        dismissBtn.addEventListener('click', () => {
+          useEditorStore.getState().removeAnnotation(ann.id)
+        })
+        dom.appendChild(dismissBtn)
 
         const divider = document.createElement('div')
         divider.className = 'annotation-tooltip-divider'
