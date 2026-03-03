@@ -1,0 +1,89 @@
+.outline-panel {
+  width: 160px;
+  min-width: 160px;
+  flex-shrink: 0;
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.outline-header {
+  padding: 14px 12px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.outline-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.outline-empty {
+  padding: 12px 12px;
+  font-size: 11px;
+  font-family: var(--font-sans);
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+/* Base item style — reset button defaults */
+.outline-item {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding: 4px 8px;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 0.1s, color 0.1s;
+}
+
+.outline-item:hover {
+  background: rgba(167, 139, 95, 0.12);
+  color: var(--text-primary);
+}
+
+/* Heading indent levels */
+.outline-item--h1 {
+  padding-left: 8px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.outline-item--h2 {
+  padding-left: 18px;
+}
+
+.outline-item--h3 {
+  padding-left: 28px;
+  color: var(--text-muted);
+  font-size: 10.5px;
+}
+
+/* Divider row */
+.outline-divider {
+  padding-left: 8px;
+  color: var(--text-muted);
+  opacity: 0.5;
+  letter-spacing: 0.05em;
+  font-size: 10px;
+}
+
+.outline-divider:hover {
+  opacity: 1;
+}

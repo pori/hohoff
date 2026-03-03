@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { FileTree } from './components/FileTree/FileTree'
 import { MarkdownEditor } from './components/Editor/MarkdownEditor'
+import { DocumentOutline } from './components/Editor/DocumentOutline'
 import { ChatPanel } from './components/AIChat/ChatPanel'
 import { AnalysisToolbar } from './components/Toolbar/AnalysisToolbar'
 import { RevisionPanel } from './components/Revisions/RevisionPanel'
@@ -10,7 +11,7 @@ import './styles/app.css'
 export default function App(): JSX.Element {
   const {
     setFileTree, activeFilePath, isDirty, markSaved, activeFileContent, theme, toggleTheme,
-    loadSession, revisionPanelOpen, toggleRevisionPanel
+    loadSession, revisionPanelOpen, toggleRevisionPanel, outlineOpen
   } = useEditorStore()
   const [sidebarOpen, setSidebarOpen] = useState(
     () => localStorage.getItem('sidebarOpen') !== 'false'
@@ -87,7 +88,10 @@ export default function App(): JSX.Element {
       </aside>
       <main className="editor-area" style={{ position: 'relative' }}>
         <AnalysisToolbar />
-        <MarkdownEditor />
+        <div className="editor-body">
+          {outlineOpen && <DocumentOutline />}
+          <MarkdownEditor />
+        </div>
         {revisionPanelOpen && <RevisionPanel />}
       </main>
       <aside className="chat-area">

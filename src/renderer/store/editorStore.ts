@@ -81,6 +81,10 @@ interface EditorState {
   rightPanelTab: 'chat' | 'feedback'
   setRightPanelTab: (tab: 'chat' | 'feedback') => void
 
+  // Document outline panel
+  outlineOpen: boolean
+  toggleOutline: () => void
+
   // Session persistence
   loadSession: () => Promise<void>
 }
@@ -522,6 +526,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   rightPanelTab: 'chat',
   setRightPanelTab: (tab) => set({ rightPanelTab: tab }),
+
+  outlineOpen: localStorage.getItem('outlineOpen') === 'true',
+  toggleOutline: () => set((s) => {
+    const next = !s.outlineOpen
+    localStorage.setItem('outlineOpen', String(next))
+    return { outlineOpen: next }
+  }),
+
   revisions: [],
   setRevisions: (revisions) => set({ revisions }),
 

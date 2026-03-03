@@ -141,6 +141,14 @@
   opacity: 0.5;
 }
 
+/* ── Outline toggle button ───────────────────────────────────────── */
+.toolbar-btn-outline {
+  padding: 4px 8px;
+  font-size: 14px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
 /* ── Story Bible toolbar ─────────────────────────────────────────── */
 .toolbar-bible-label {
   font-size: 9px;

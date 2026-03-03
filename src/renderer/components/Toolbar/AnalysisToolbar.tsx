@@ -63,7 +63,9 @@ export function AnalysisToolbar(): JSX.Element {
     setProjectWordCount,
     fontSize,
     setFontSize,
-    setRightPanelTab
+    setRightPanelTab,
+    outlineOpen,
+    toggleOutline
   } = useEditorStore()
 
   useEffect(() => {
@@ -297,6 +299,13 @@ export function AnalysisToolbar(): JSX.Element {
       </div>
 
       <div className="toolbar-right">
+        <button
+          className={`toolbar-btn toolbar-btn-outline${outlineOpen ? ' active' : ''}`}
+          onClick={toggleOutline}
+          title={outlineOpen ? 'Hide document outline' : 'Show document outline'}
+        >
+          ≡
+        </button>
         <div className="toolbar-fontsize">
           <button
             className="toolbar-fontsize-btn"
