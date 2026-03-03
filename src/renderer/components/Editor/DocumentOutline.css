@@ -1,12 +1,18 @@
 .outline-panel {
-  width: 160px;
-  min-width: 160px;
+  width: 0;
+  min-width: 0;
   flex-shrink: 0;
   background: var(--sidebar-bg);
-  border-right: 1px solid var(--border);
+  border-right: 0px solid var(--border);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transition: width 0.2s ease, border-right-width 0.2s ease;
+}
+
+.outline-panel--open {
+  width: 160px;
+  border-right-width: 1px;
 }
 
 .outline-header {

@@ -11,7 +11,7 @@ import './styles/app.css'
 export default function App(): JSX.Element {
   const {
     setFileTree, activeFilePath, isDirty, markSaved, activeFileContent, theme, toggleTheme,
-    loadSession, revisionPanelOpen, toggleRevisionPanel, outlineOpen
+    loadSession, revisionPanelOpen, toggleRevisionPanel
   } = useEditorStore()
   const [sidebarOpen, setSidebarOpen] = useState(
     () => localStorage.getItem('sidebarOpen') !== 'false'
@@ -89,7 +89,7 @@ export default function App(): JSX.Element {
       <main className="editor-area" style={{ position: 'relative' }}>
         <AnalysisToolbar />
         <div className="editor-body">
-          {outlineOpen && <DocumentOutline />}
+          <DocumentOutline />
           <MarkdownEditor />
         </div>
         {revisionPanelOpen && <RevisionPanel />}

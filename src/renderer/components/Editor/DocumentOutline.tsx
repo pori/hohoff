@@ -42,10 +42,11 @@ function navigateTo(offset: number): void {
 
 export function DocumentOutline(): JSX.Element {
   const activeFileContent = useEditorStore((s) => s.activeFileContent)
+  const outlineOpen = useEditorStore((s) => s.outlineOpen)
   const items = useMemo(() => parseOutline(activeFileContent), [activeFileContent])
 
   return (
-    <div className="outline-panel">
+    <div className={`outline-panel${outlineOpen ? ' outline-panel--open' : ''}`}>
       <div className="outline-header">OUTLINE</div>
       <div className="outline-list">
         {items.length === 0 ? (
