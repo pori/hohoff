@@ -40,18 +40,16 @@ export function ChatMessageItem({ message, linkedAnnotations }: Props): JSX.Elem
   }, [message.role, message.content])
 
   const handleApplyToBible = async (): Promise<void> => {
-    await window.api.writeStoryBible(message.content)
-    // If the story bible is currently open, update the editor directly.
-    // setActiveFile(samePath, …) doesn't trigger the MarkdownEditor's sync effect
-    // (which only watches activeFilePath changes), so we use currentEditorView
-    // instead — the same pattern used by RevisionPanel.restore().
+    // writeStoryBible merges the new content into the existing bible by ## section
+    // and returns the full merged document.
+    const merged = await window.api.writeStoryBible(message.content)
+    // If the story bible is currently open, update the editor to show the merged result.
     if (activeFilePath?.endsWith('Story Bible.md')) {
       const view = currentEditorView
       if (view) {
         view.dispatch({
-          changes: { from: 0, to: view.state.doc.length, insert: message.content }
+          changes: { from: 0, to: view.state.doc.length, insert: merged }
         })
-        // File is already saved — clear the dirty flag the dispatch just set
         markSaved()
       }
     }
@@ -116,7 +114,7 @@ export function ChatMessageItem({ message, linkedAnnotations }: Props): JSX.Elem
           <button
             className="chat-apply-btn"
             onClick={handleApplyToBible}
-            title="Replace Story Bible.md with this content"
+            title="Merge into Story Bible"
           >
             ↓ Apply to Story Bible
           </button>

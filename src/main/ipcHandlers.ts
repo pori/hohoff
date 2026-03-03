@@ -75,7 +75,7 @@ export function registerIpcHandlers(): void {
   })
 
   ipcMain.handle('fs:writeStoryBible', async (_event, content: string) => {
-    await writeStoryBibleFile(content)
+    return await writeStoryBibleFile(content)
   })
 
   ipcMain.handle('fs:pickAttachments', async (event): Promise<Attachment[]> => {

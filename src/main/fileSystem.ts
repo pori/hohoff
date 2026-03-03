@@ -190,9 +190,75 @@ export async function openStoryBibleFile(): Promise<{ path: string; content: str
   return { path: STORY_BIBLE_PATH, content }
 }
 
-export async function writeStoryBibleFile(content: string): Promise<void> {
+// Parse a markdown document into a preamble (text before first ## heading) and
+// an ordered list of { header, body } sections delimited by ## headings.
+function parseSections(content: string): { preamble: string; sections: { header: string; body: string }[] } {
+  const lines = content.split('\n')
+  const preamble: string[] = []
+  const sections: { header: string; body: string[] }[] = []
+  let current: { header: string; body: string[] } | null = null
+
+  for (const line of lines) {
+    if (line.startsWith('## ')) {
+      if (current) sections.push({ header: current.header, body: current.body })
+      current = { header: line, body: [] }
+    } else if (current === null) {
+      preamble.push(line)
+    } else {
+      current.body.push(line)
+    }
+  }
+  if (current) sections.push({ header: current.header, body: current.body })
+
+  return {
+    preamble: preamble.join('\n').trimEnd(),
+    sections: sections.map(s => ({ header: s.header, body: s.body.join('\n').trimEnd() }))
+  }
+}
+
+// Merge incoming content into existing by ## section.
+// Sections present in incoming replace the matching section in existing.
+// New sections (in incoming but not existing) are appended.
+// Sections only in existing are preserved unchanged.
+export function mergeStoryBibleContent(existing: string, incoming: string): string {
+  const { preamble, sections: existingSections } = parseSections(existing)
+  const { sections: incomingSections } = parseSections(incoming)
+
+  const updatedBodies = new Map(existingSections.map(s => [s.header, s.body]))
+  const existingHeaders = new Set(existingSections.map(s => s.header))
+
+  for (const { header, body } of incomingSections) {
+    updatedBodies.set(header, body)
+  }
+
+  // Existing sections in original order (with updated bodies), then new ones
+  const result: string[] = [preamble || '# Story Bible']
+  for (const { header } of existingSections) {
+    const body = updatedBodies.get(header) ?? ''
+    result.push('', header)
+    if (body) result.push('', body)
+  }
+  for (const { header, body } of incomingSections) {
+    if (!existingHeaders.has(header)) {
+      result.push('', header)
+      if (body) result.push('', body)
+    }
+  }
+
+  return result.join('\n') + '\n'
+}
+
+export async function writeStoryBibleFile(content: string): Promise<string> {
   await mkdir(HOHOFF_DIR, { recursive: true })
-  await writeFile(STORY_BIBLE_PATH, content, 'utf-8')
+  let existing: string
+  try {
+    existing = await readFile(STORY_BIBLE_PATH, 'utf-8')
+  } catch {
+    existing = STORY_BIBLE_TEMPLATE
+  }
+  const merged = mergeStoryBibleContent(existing, content)
+  await writeFile(STORY_BIBLE_PATH, merged, 'utf-8')
+  return merged
 }
 
 export async function readStoryBibleFile(): Promise<string | null> {

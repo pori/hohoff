@@ -89,6 +89,6 @@ contextBridge.exposeInMainWorld('api', {
   openStoryBible: (): Promise<{ path: string; content: string }> =>
     ipcRenderer.invoke('fs:openStoryBible'),
 
-  writeStoryBible: (content: string): Promise<void> =>
+  writeStoryBible: (content: string): Promise<string> =>
     ipcRenderer.invoke('fs:writeStoryBible', content)
 })

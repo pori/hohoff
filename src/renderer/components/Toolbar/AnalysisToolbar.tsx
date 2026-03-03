@@ -25,11 +25,11 @@ const BIBLE_PROMPTS = {
 
 Base everything strictly on what is in the manuscript text.`,
 
-  characters: `Read the full manuscript and write character profiles for the Story Bible's Characters section. For each named character include: role, physical description, personality traits, key relationships, and arc. Format as markdown subsections (### Name).`,
+  characters: `Read the full manuscript and write character profiles for the Story Bible. Begin your response with the heading \`## Characters\` followed by a blank line. For each named character include: role, physical description, personality traits, key relationships, and arc. Format each character as a ### subsection.`,
 
-  timeline: `Read the full manuscript and extract all significant events in chronological order for the Story Bible Timeline section. Reference chapters where helpful. Format as a markdown numbered list.`,
+  timeline: `Read the full manuscript and extract all significant events in chronological order for the Story Bible. Begin your response with the heading \`## Timeline\` followed by a blank line. Reference chapters where helpful. Format as a numbered list.`,
 
-  world: `Read the full manuscript and write a World & Setting entry for the Story Bible. Cover: the Basque Country geography and atmosphere, the historical period and cultural context, and key locations described in the text. Format as markdown.`
+  world: `Read the full manuscript and write a World & Setting section for the Story Bible. Begin your response with the heading \`## World & Setting\` followed by a blank line. Cover: the Basque Country geography and atmosphere, the historical period and cultural context, and key locations described in the text.`
 }
 
 function countWords(text: string): number {
@@ -98,9 +98,7 @@ export function AnalysisToolbar(): JSX.Element {
           conversationHistory: chatHistory
             .slice(-10)
             .map((m) => ({ role: m.role, content: m.content })),
-          userMessage: prompt,
-          projectMode: true,
-          storyBibleMode: false
+          userMessage: prompt
         },
         (chunk: string) => {
           appendToLastAssistantMessage(chunk)
