@@ -5,10 +5,10 @@ import type { FileNode, RevisionMeta } from '../renderer/types/editor'
 const DRAFT_ROOT =
   process.env.DRAFT_PATH ?? '/Users/pori/WebstormProjects/hohoff/draft'
 
-const ORDER_FILE = join(DRAFT_ROOT, '.order.json')
-const SESSION_FILE = join(DRAFT_ROOT, '.session.json')
-const REVISIONS_DIR = join(DRAFT_ROOT, '.revisions')
 const HOHOFF_DIR = join(DRAFT_ROOT, '.hohoff')
+const ORDER_FILE = join(HOHOFF_DIR, 'order.json')
+const SESSION_FILE = join(HOHOFF_DIR, 'session.json')
+const REVISIONS_DIR = join(HOHOFF_DIR, 'revisions')
 export const STORY_BIBLE_PATH = join(HOHOFF_DIR, 'Story Bible.md')
 
 const STORY_BIBLE_TEMPLATE = `# Story Bible
@@ -56,6 +56,7 @@ async function readOrderFile(): Promise<Record<string, string[]>> {
 }
 
 export async function saveOrderFile(order: Record<string, string[]>): Promise<void> {
+  await mkdir(HOHOFF_DIR, { recursive: true })
   await writeFile(ORDER_FILE, JSON.stringify(order, null, 2), 'utf-8')
 }
 
@@ -68,6 +69,7 @@ export async function readSession(): Promise<Record<string, unknown>> {
 }
 
 export async function writeSession(data: Record<string, unknown>): Promise<void> {
+  await mkdir(HOHOFF_DIR, { recursive: true })
   await writeFile(SESSION_FILE, JSON.stringify(data), 'utf-8')
 }
 

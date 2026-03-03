@@ -205,6 +205,30 @@ const annotationHoverTooltip = hoverTooltip(
     // across the nested create() closure without requiring non-null assertions.
     const ann: TextAnnotation = found
 
+    // User comments: show static tooltip with the comment text — no AI streaming
+    if (ann.type === 'user_comment') {
+      return {
+        pos,
+        above: true,
+        create() {
+          const dom = document.createElement('div')
+          dom.className = 'annotation-tooltip'
+          const label = document.createElement('span')
+          label.className = 'annotation-tooltip-label'
+          label.textContent = 'Your comment'
+          dom.appendChild(label)
+          const divider = document.createElement('div')
+          divider.className = 'annotation-tooltip-divider'
+          dom.appendChild(divider)
+          const body = document.createElement('div')
+          body.className = 'annotation-tooltip-body'
+          body.textContent = ann.comment ?? ann.message
+          dom.appendChild(body)
+          return { dom, destroy() {} }
+        }
+      }
+    }
+
     return {
       pos,
       above: true,
@@ -380,6 +404,11 @@ function buildTheme(fontSize: number, dark: boolean): ReturnType<typeof EditorVi
       backgroundColor: 'rgba(30, 200, 150, 0.15)',
       borderBottom: '2px solid rgba(30, 200, 150, 0.7)',
       borderRadius: '2px'
+    },
+    '.annotation-user_comment': {
+      backgroundColor: 'rgba(240, 100, 180, 0.15)',
+      borderBottom: '2px solid rgba(240, 100, 180, 0.65)',
+      borderRadius: '2px'
     }
   },
   { dark }
@@ -391,7 +420,27 @@ export function MarkdownEditor(): JSX.Element {
   const viewRef = useRef<EditorView | null>(null)
   const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null)
   const [hasSelection, setHasSelection] = useState(false)
+  const [pendingComment, setPendingComment] = useState<{ from: number; to: number; text: string } | null>(null)
+  const [commentDraft, setCommentDraft] = useState('')
   const { activeFilePath, activeFileContent, setContent, annotations, fontSize, theme, scrollPositions } = useEditorStore()
+
+  function saveComment(): void {
+    if (!pendingComment || !commentDraft.trim()) return
+    const annotation: TextAnnotation = {
+      id: `user-comment-${Date.now()}`,
+      type: 'user_comment',
+      from: pendingComment.from,
+      to: pendingComment.to,
+      matchedText: pendingComment.text,
+      message: commentDraft.trim(),
+      comment: commentDraft.trim(),
+    }
+    const store = useEditorStore.getState()
+    store.setAnnotations([...store.annotations, annotation])
+    store.setRightPanelTab('feedback')
+    setPendingComment(null)
+    setCommentDraft('')
+  }
 
   // Initialize CodeMirror once
   useEffect(() => {
@@ -648,6 +697,19 @@ export function MarkdownEditor(): JSX.Element {
           store.setAnnotations([...store.annotations, annotation])
           store.setRightPanelTab('feedback')
         }
+      },
+      {
+        label: 'Add comment',
+        action: () => {
+          const view = viewRef.current
+          if (!view) return
+          const { from, to } = view.state.selection.main
+          const text = view.state.sliceDoc(from, to)
+          if (!text.trim()) return
+          setMenuPos(null)
+          setPendingComment({ from, to, text })
+          setCommentDraft('')
+        }
       }
     ] : [])
   ]
@@ -668,6 +730,33 @@ export function MarkdownEditor(): JSX.Element {
           items={editorMenuItems}
           onClose={() => setMenuPos(null)}
         />
+      )}
+      {pendingComment && (
+        <div className="comment-modal-overlay" onClick={() => setPendingComment(null)}>
+          <div className="comment-modal" onClick={e => e.stopPropagation()}>
+            <div className="comment-modal-excerpt">
+              &ldquo;{pendingComment.text.length > 80
+                ? pendingComment.text.slice(0, 80) + '…'
+                : pendingComment.text}&rdquo;
+            </div>
+            <textarea
+              className="comment-modal-input"
+              placeholder="Add a comment…"
+              value={commentDraft}
+              onChange={e => setCommentDraft(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveComment() }
+                if (e.key === 'Escape') setPendingComment(null)
+              }}
+              rows={3}
+              autoFocus
+            />
+            <div className="comment-modal-actions">
+              <button className="comment-modal-cancel" onClick={() => setPendingComment(null)}>Cancel</button>
+              <button className="comment-modal-save" onClick={saveComment} disabled={!commentDraft.trim()}>Save</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

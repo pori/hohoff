@@ -18,8 +18,10 @@ function badgeColor(type: TextAnnotation['type']): string {
     case 'passive_voice': return 'rgba(255, 200, 0, 0.75)'
     case 'consistency':   return 'rgba(220, 80, 80, 0.75)'
     case 'style':         return 'rgba(80, 160, 255, 0.75)'
+    case 'show_tell':     return 'rgba(255, 140, 30, 0.75)'
     case 'critique':      return 'rgba(160, 80, 220, 0.75)'
     case 'custom':        return 'rgba(30, 200, 150, 0.8)'
+    case 'user_comment':  return 'rgba(240, 100, 180, 0.85)'
   }
 }
 

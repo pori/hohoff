@@ -25,6 +25,7 @@ function badgeColor(type: TextAnnotation['type']): string {
     case 'show_tell':     return 'rgba(255, 140, 30, 0.75)'
     case 'critique':      return 'rgba(160, 80, 220, 0.75)'
     case 'custom':        return 'rgba(30, 200, 150, 0.8)'
+    case 'user_comment':  return 'rgba(240, 100, 180, 0.85)'
   }
 }
 
@@ -165,6 +166,37 @@ function FeedbackCard({ ann, autoAnalyse, onDismiss }: FeedbackCardProps): JSX.E
   )
 }
 
+interface UserCommentCardProps {
+  ann: TextAnnotation
+  onDismiss: () => void
+}
+
+function UserCommentCard({ ann, onDismiss }: UserCommentCardProps): JSX.Element {
+  return (
+    <div
+      className="fb-card fb-card-user_comment"
+      style={{ '--badge-color': 'rgba(240, 100, 180, 0.85)' } as React.CSSProperties}
+    >
+      <div className="fb-card-header" onClick={() => scrollToAnnotation(ann)} title="Jump to passage">
+        <div className="fb-card-header-top">
+          <div className="fb-card-header-badges">
+            <span className="fb-card-badge">Your comment</span>
+          </div>
+          <button
+            className="fb-card-dismiss"
+            onClick={(e) => { e.stopPropagation(); onDismiss() }}
+            title="Dismiss"
+          >
+            ×
+          </button>
+        </div>
+        <span className="fb-card-excerpt">"{ann.matchedText}"</span>
+      </div>
+      <div className="fb-card-user-comment-body">{ann.comment}</div>
+    </div>
+  )
+}
+
 interface ArchiveCardProps {
   ann: TextAnnotation
   onRemove?: () => void
@@ -191,6 +223,9 @@ function ArchiveCard({ ann, onRemove }: ArchiveCardProps): JSX.Element {
         )}
       </div>
       <span className="fb-archive-card-excerpt">"{ann.matchedText}"</span>
+      {ann.comment && (
+        <span className="fb-archive-card-comment">{ann.comment}</span>
+      )}
       {ann.suggestion && (
         <span className="fb-archive-card-suggestion">→ {ann.suggestion}</span>
       )}
@@ -267,14 +302,20 @@ export function FeedbackPanel(): JSX.Element {
           </div>
 
           <div className="fb-list">
-            {[...annotations].sort((a, b) => a.from - b.from).map(ann => (
-              <FeedbackCard
-                key={ann.id}
-                ann={ann}
-                autoAnalyse={analyseAll || ann.autoAnalyse === true}
-                onDismiss={() => { cancelPendingDismiss(ann.id); removeAnnotation(ann.id); tooltipAnalysisCache.delete(ann.id) }}
-              />
-            ))}
+            {[...annotations].sort((a, b) => a.from - b.from).map(ann =>
+              ann.type === 'user_comment'
+                ? <UserCommentCard
+                    key={ann.id}
+                    ann={ann}
+                    onDismiss={() => { cancelPendingDismiss(ann.id); removeAnnotation(ann.id) }}
+                  />
+                : <FeedbackCard
+                    key={ann.id}
+                    ann={ann}
+                    autoAnalyse={analyseAll || ann.autoAnalyse === true}
+                    onDismiss={() => { cancelPendingDismiss(ann.id); removeAnnotation(ann.id); tooltipAnalysisCache.delete(ann.id) }}
+                  />
+            )}
           </div>
         </>
       )}

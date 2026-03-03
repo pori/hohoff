@@ -29,7 +29,7 @@ export interface ChatSession {
   messages: ChatMessage[]
 }
 
-export type AnnotationType = 'passive_voice' | 'consistency' | 'style' | 'show_tell' | 'critique' | 'custom'
+export type AnnotationType = 'passive_voice' | 'consistency' | 'style' | 'show_tell' | 'critique' | 'custom' | 'user_comment'
 
 export interface TextAnnotation {
   id: string
@@ -43,6 +43,7 @@ export interface TextAnnotation {
   dismissed?: boolean // true when the user dismissed this annotation (archived)
   autoAnalyse?: boolean // true when created via context menu — FeedbackCard starts AI analysis immediately
   analysisCache?: { text: string; suggestion: string | null } // persisted AI analysis result
+  comment?: string // user-written note text (only set for user_comment type)
 }
 
 export type AnalysisMode = 'none' | 'passive_voice' | 'consistency' | 'style' | 'show_tell' | 'critique'
