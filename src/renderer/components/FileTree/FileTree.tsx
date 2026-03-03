@@ -64,29 +64,13 @@ export function FileTree(): JSX.Element {
     <nav className="file-tree">
       <div className="file-tree-header">
         <span>HOHOFF</span>
-        <div className="file-tree-header-actions">
-          <button
-            className="file-tree-action-btn"
-            onClick={() => { setCreatingRoot('file'); setCreateRootValue('') }}
-            title="New File"
-          >
-            +
-          </button>
-          <button
-            className="file-tree-action-btn"
-            onClick={() => { setCreatingRoot('dir'); setCreateRootValue('') }}
-            title="New Folder"
-          >
-            ⊕
-          </button>
-          <button
-            className="file-tree-bible-btn"
-            onClick={handleOpenStoryBible}
-            title="Open Story Bible"
-          >
-            📖
-          </button>
-        </div>
+        <button
+          className="file-tree-bible-btn"
+          onClick={handleOpenStoryBible}
+          title="Open Story Bible"
+        >
+          📖
+        </button>
       </div>
       <div
         className="file-tree-list"

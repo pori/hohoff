@@ -18,29 +18,6 @@
   text-transform: uppercase;
 }
 
-.file-tree-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
-.file-tree-action-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 15px;
-  line-height: 1;
-  padding: 0 3px;
-  opacity: 0.55;
-  transition: opacity 0.15s;
-  flex-shrink: 0;
-  color: var(--text-muted);
-}
-
-.file-tree-action-btn:hover {
-  opacity: 1;
-}
-
 .file-tree-bible-btn {
   background: none;
   border: none;
