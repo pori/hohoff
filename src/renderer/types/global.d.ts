@@ -25,6 +25,7 @@ declare global {
       moveFile: (sourcePath: string, targetDirPath: string) => Promise<string>
       openStoryBible: () => Promise<{ path: string; content: string }>
       writeStoryBible: (content: string) => Promise<string>
+      onMenuAction: (handler: (action: string) => void) => () => void
     }
   }
 }

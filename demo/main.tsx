@@ -20,7 +20,17 @@ import '@renderer/styles/app.css'
   saveRevision: () => Promise.resolve(),
   listRevisions: () => Promise.resolve([]),
   loadRevision: () => Promise.resolve(''),
-  deleteRevision: () => Promise.resolve()
+  deleteRevision: () => Promise.resolve(),
+  renameNode: () => Promise.resolve(''),
+  deleteNode: () => Promise.resolve(),
+  createFile: () => Promise.resolve(''),
+  createDir: () => Promise.resolve(''),
+  moveFile: () => Promise.resolve(''),
+  openStoryBible: () => Promise.resolve({ path: '', content: '' }),
+  writeStoryBible: () => Promise.resolve(''),
+  readSession: () => Promise.resolve({}),
+  writeSession: () => Promise.resolve(),
+  onMenuAction: () => () => {}
 }
 
 const DEMO_TEXT =

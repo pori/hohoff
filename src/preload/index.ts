@@ -90,5 +90,11 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.invoke('fs:openStoryBible'),
 
   writeStoryBible: (content: string): Promise<string> =>
-    ipcRenderer.invoke('fs:writeStoryBible', content)
+    ipcRenderer.invoke('fs:writeStoryBible', content),
+
+  onMenuAction: (handler: (action: string) => void): (() => void) => {
+    const listener = (_: Electron.IpcRendererEvent, action: string): void => handler(action)
+    ipcRenderer.on('menu:action', listener)
+    return () => ipcRenderer.removeListener('menu:action', listener)
+  }
 })

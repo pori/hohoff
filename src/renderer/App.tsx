@@ -11,7 +11,7 @@ import './styles/app.css'
 export default function App(): JSX.Element {
   const {
     setFileTree, activeFilePath, isDirty, markSaved, activeFileContent, theme, toggleTheme,
-    loadSession, revisionPanelOpen, toggleRevisionPanel
+    loadSession, revisionPanelOpen, toggleRevisionPanel, fontSize, setFontSize
   } = useEditorStore()
   const [sidebarOpen, setSidebarOpen] = useState(
     () => localStorage.getItem('sidebarOpen') !== 'false'
@@ -26,6 +26,33 @@ export default function App(): JSX.Element {
     document.documentElement.classList.toggle('light', theme === 'light')
     loadSession()
   }, [])
+
+  // Handle menu actions sent from the main process
+  useEffect(() => {
+    return window.api.onMenuAction(async (action) => {
+      if (action === 'save') {
+        if (activeFilePath && isDirty) {
+          await window.api.writeFile(activeFilePath, activeFileContent)
+          await window.api.saveRevision(activeFilePath, activeFileContent)
+          markSaved()
+        }
+      } else if (action === 'toggleSidebar') {
+        setSidebarOpen((v) => { const n = !v; localStorage.setItem('sidebarOpen', String(n)); return n })
+      } else if (action === 'toggleChat') {
+        setChatOpen((v) => { const n = !v; localStorage.setItem('chatOpen', String(n)); return n })
+      } else if (action === 'toggleRevisions') {
+        toggleRevisionPanel()
+      } else if (action === 'toggleTheme') {
+        toggleTheme()
+      } else if (action === 'fontIncrease') {
+        setFontSize(fontSize + 1)
+      } else if (action === 'fontDecrease') {
+        setFontSize(fontSize - 1)
+      } else if (action === 'fontReset') {
+        setFontSize(15)
+      }
+    })
+  }, [activeFilePath, isDirty, activeFileContent, fontSize])
 
   // Handle Cmd+S / Ctrl+S
   useEffect(() => {
