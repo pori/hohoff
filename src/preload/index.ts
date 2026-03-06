@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { FileNode, AIPayload, RevisionMeta, Attachment, SearchFileResult } from '../renderer/types/editor'
+import type { FileNode, AIPayload, RevisionMeta, Attachment, SearchFileResult, GlobalConfig } from '../renderer/types/editor'
 
 interface SearchOptions {
   caseSensitive: boolean
@@ -109,4 +109,13 @@ contextBridge.exposeInMainWorld('api', {
 
   replaceInFiles: (query: string, replacement: string, options: SearchOptions, filePaths: string[]): Promise<string[]> =>
     ipcRenderer.invoke('fs:replace', query, replacement, options, filePaths),
+
+  readConfig: (): Promise<GlobalConfig> =>
+    ipcRenderer.invoke('config:read'),
+
+  writeConfig: (updates: Partial<GlobalConfig>): Promise<void> =>
+    ipcRenderer.invoke('config:write', updates),
+
+  pickProjectFolder: (): Promise<string | null> =>
+    ipcRenderer.invoke('config:pickFolder'),
 })

@@ -6,6 +6,7 @@ import { ChatPanel } from './components/AIChat/ChatPanel'
 import { AnalysisToolbar } from './components/Toolbar/AnalysisToolbar'
 import { RevisionPanel } from './components/Revisions/RevisionPanel'
 import { ProjectSearchModal } from './components/Search/ProjectSearchModal'
+import { SettingsDialog } from './components/Settings/SettingsDialog'
 import { useEditorStore } from './store/editorStore'
 import './styles/app.css'
 
@@ -21,6 +22,7 @@ export default function App(): JSX.Element {
   const [chatOpen, setChatOpen] = useState(
     () => localStorage.getItem('chatOpen') !== 'false'
   )
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   // Load file tree, apply persisted theme, and restore last session
   useEffect(() => {
@@ -54,6 +56,8 @@ export default function App(): JSX.Element {
         setFontSize(15)
       } else if (action === 'projectSearch') {
         openProjectSearch()
+      } else if (action === 'openSettings') {
+        setSettingsOpen(true)
       }
     })
   }, [activeFilePath, isDirty, activeFileContent, fontSize])
@@ -132,6 +136,7 @@ export default function App(): JSX.Element {
         <ChatPanel />
       </aside>
       <ProjectSearchModal />
+      {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
     </div>
   )
 }

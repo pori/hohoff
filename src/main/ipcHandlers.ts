@@ -3,8 +3,10 @@ import { readFileSync } from 'fs'
 import { extname, basename } from 'path'
 import { listDraftFiles, readMarkdownFile, writeMarkdownFile, getProjectWordCount, saveOrderFile, readSession, writeSession, saveRevision, listRevisions, loadRevision, deleteRevision, renameFileOrDir, deleteFileOrDir, createMarkdownFile, createSubdirectory, moveFileOrDir, readStoryBibleFile, openStoryBibleFile, writeStoryBibleFile, searchAcrossFiles, replaceInFiles } from './fileSystem'
 import type { SearchOptions } from './fileSystem'
-import { streamMessage } from './aiService'
+import { streamMessage, resetClient } from './aiService'
 import type { AIPayload, Attachment } from '../renderer/types/editor'
+import { readGlobalConfig, writeGlobalConfig } from './globalConfig'
+import type { GlobalConfig } from './globalConfig'
 
 export function registerIpcHandlers(): void {
   ipcMain.handle('fs:listFiles', async () => {
@@ -147,5 +149,20 @@ export function registerIpcHandlers(): void {
         event.sender.send('ai:error', message)
       }
     }
+  })
+
+  ipcMain.handle('config:read', (): GlobalConfig => {
+    return readGlobalConfig()
+  })
+
+  ipcMain.handle('config:write', (_event, updates: Partial<GlobalConfig>): void => {
+    writeGlobalConfig(updates)
+    if (updates.apiKey !== undefined) resetClient()
+  })
+
+  ipcMain.handle('config:pickFolder', async (event): Promise<string | null> => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    const result = await dialog.showOpenDialog(win!, { properties: ['openDirectory'] })
+    return result.canceled ? null : result.filePaths[0]
   })
 }

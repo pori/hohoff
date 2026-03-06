@@ -1,16 +1,10 @@
 import { app, BrowserWindow, shell, nativeImage, Menu, dialog } from 'electron'
-import { join, resolve } from 'path'
-import { config } from 'dotenv'
+import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { registerIpcHandlers } from './ipcHandlers'
-
-const DRAFT_ROOT = process.env.DRAFT_PATH ?? '/Users/pori/WebstormProjects/hohoff/draft'
+import { getDraftRoot } from './globalConfig'
 
 app.setName('Hohoff')
-
-// Load .env then .env.local so values in .env.local override .env
-config({ path: resolve(process.cwd(), '.env') })
-config({ path: resolve(process.cwd(), '.env.local'), override: true })
 
 function send(win: BrowserWindow, action: string): void {
   if (!win.isDestroyed()) win.webContents.send('menu:action', action)
@@ -37,6 +31,12 @@ function buildAppMenu(win: BrowserWindow): void {
                   })
               },
               { type: 'separator' },
+              {
+                label: 'Preferences…',
+                accelerator: 'CmdOrCtrl+,',
+                click: () => send(win, 'openSettings')
+              },
+              { type: 'separator' },
               { role: 'services' },
               { type: 'separator' },
               { role: 'hide' },
@@ -61,9 +61,17 @@ function buildAppMenu(win: BrowserWindow): void {
         { type: 'separator' },
         {
           label: 'Open Draft Folder in Finder',
-          click: () => shell.openPath(DRAFT_ROOT)
+          click: () => shell.openPath(getDraftRoot())
         },
         { type: 'separator' },
+        ...(!isMac ? ([
+          {
+            label: 'Preferences…',
+            accelerator: 'CmdOrCtrl+,',
+            click: () => send(win, 'openSettings')
+          },
+          { type: 'separator' }
+        ] as Electron.MenuItemConstructorOptions[]) : []),
         isMac ? { role: 'close' } : { role: 'quit' }
       ]
     },

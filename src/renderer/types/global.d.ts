@@ -1,4 +1,4 @@
-import type { FileNode, AIPayload, RevisionMeta, Attachment, SearchFileResult } from './editor'
+import type { FileNode, AIPayload, RevisionMeta, Attachment, SearchFileResult, GlobalConfig } from './editor'
 
 interface SearchOptions {
   caseSensitive: boolean
@@ -34,6 +34,9 @@ declare global {
       onMenuAction: (handler: (action: string) => void) => () => void
       searchFiles: (query: string, options: SearchOptions) => Promise<SearchFileResult[]>
       replaceInFiles: (query: string, replacement: string, options: SearchOptions, filePaths: string[]) => Promise<string[]>
+      readConfig: () => Promise<GlobalConfig>
+      writeConfig: (updates: Partial<GlobalConfig>) => Promise<void>
+      pickProjectFolder: () => Promise<string | null>
     }
   }
 }

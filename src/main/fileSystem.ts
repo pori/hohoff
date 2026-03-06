@@ -1,15 +1,13 @@
 import { readdir, readFile, writeFile, mkdir, unlink, rename as fsRename, rm } from 'fs/promises'
 import { join, dirname, basename } from 'path'
 import type { FileNode, RevisionMeta, SearchMatch, SearchFileResult } from '../renderer/types/editor'
+import { getDraftRoot } from './globalConfig'
 
-const DRAFT_ROOT =
-  process.env.DRAFT_PATH ?? '/Users/pori/WebstormProjects/hohoff/draft'
-
-const HOHOFF_DIR = join(DRAFT_ROOT, '.hohoff')
-const ORDER_FILE = join(HOHOFF_DIR, 'order.json')
-const SESSION_FILE = join(HOHOFF_DIR, 'session.json')
-const REVISIONS_DIR = join(HOHOFF_DIR, 'revisions')
-export const STORY_BIBLE_PATH = join(HOHOFF_DIR, 'Story Bible.md')
+const hohoffDir = (): string => join(getDraftRoot(), '.hohoff')
+const orderFile = (): string => join(hohoffDir(), 'order.json')
+const sessionFile = (): string => join(hohoffDir(), 'session.json')
+const revisionsDir = (): string => join(hohoffDir(), 'revisions')
+export const getStoryBiblePath = (): string => join(hohoffDir(), 'Story Bible.md')
 
 const STORY_BIBLE_TEMPLATE = `# Story Bible
 
@@ -49,28 +47,28 @@ function sortDraftNodes(a: FileNode, b: FileNode): number {
 
 async function readOrderFile(): Promise<Record<string, string[]>> {
   try {
-    return JSON.parse(await readFile(ORDER_FILE, 'utf-8'))
+    return JSON.parse(await readFile(orderFile(), 'utf-8'))
   } catch {
     return {}
   }
 }
 
 export async function saveOrderFile(order: Record<string, string[]>): Promise<void> {
-  await mkdir(HOHOFF_DIR, { recursive: true })
-  await writeFile(ORDER_FILE, JSON.stringify(order, null, 2), 'utf-8')
+  await mkdir(hohoffDir(), { recursive: true })
+  await writeFile(orderFile(), JSON.stringify(order, null, 2), 'utf-8')
 }
 
 export async function readSession(): Promise<Record<string, unknown>> {
   try {
-    return JSON.parse(await readFile(SESSION_FILE, 'utf-8'))
+    return JSON.parse(await readFile(sessionFile(), 'utf-8'))
   } catch {
     return {}
   }
 }
 
 export async function writeSession(data: Record<string, unknown>): Promise<void> {
-  await mkdir(HOHOFF_DIR, { recursive: true })
-  await writeFile(SESSION_FILE, JSON.stringify(data), 'utf-8')
+  await mkdir(hohoffDir(), { recursive: true })
+  await writeFile(sessionFile(), JSON.stringify(data), 'utf-8')
 }
 
 function applyOrder(nodes: FileNode[], savedNames: string[]): FileNode[] {
@@ -82,14 +80,14 @@ function applyOrder(nodes: FileNode[], savedNames: string[]): FileNode[] {
 
 export async function listDraftFiles(): Promise<FileNode[]> {
   const [entries, order] = await Promise.all([
-    readdir(DRAFT_ROOT, { withFileTypes: true }),
+    readdir(getDraftRoot(), { withFileTypes: true }),
     readOrderFile()
   ])
   const nodes: FileNode[] = []
 
   for (const entry of entries) {
     if (entry.name.startsWith('.')) continue
-    const fullPath = join(DRAFT_ROOT, entry.name)
+    const fullPath = join(getDraftRoot(), entry.name)
 
     if (entry.isDirectory()) {
       const children = await readdir(fullPath, { withFileTypes: true })
@@ -129,8 +127,9 @@ export async function listDraftFiles(): Promise<FileNode[]> {
 }
 
 function assertInDraftRoot(filePath: string): void {
-  const resolved = filePath.startsWith('/') ? filePath : join(DRAFT_ROOT, filePath)
-  if (!resolved.startsWith(DRAFT_ROOT)) {
+  const draftRoot = getDraftRoot()
+  const resolved = filePath.startsWith('/') ? filePath : join(draftRoot, filePath)
+  if (!resolved.startsWith(draftRoot)) {
     throw new Error('Access denied: path outside draft directory')
   }
 }
@@ -167,8 +166,8 @@ function flattenFileNodes(nodes: FileNode[]): string[] {
 export async function readAllDraftFiles(): Promise<DraftDocument[]> {
   const tree = await listDraftFiles()
   // Exclude Story Bible.md — it is injected separately via readStoryBibleFile()
-  const paths = flattenFileNodes(tree).filter(p => p !== STORY_BIBLE_PATH)
-  const prefix = DRAFT_ROOT + '/'
+  const paths = flattenFileNodes(tree).filter(p => p !== getStoryBiblePath())
+  const prefix = getDraftRoot() + '/'
   return Promise.all(
     paths.map(async (p) => ({
       path: p,
@@ -179,15 +178,15 @@ export async function readAllDraftFiles(): Promise<DraftDocument[]> {
 }
 
 export async function openStoryBibleFile(): Promise<{ path: string; content: string }> {
-  await mkdir(HOHOFF_DIR, { recursive: true })
+  await mkdir(hohoffDir(), { recursive: true })
   let content: string
   try {
-    content = await readFile(STORY_BIBLE_PATH, 'utf-8')
+    content = await readFile(getStoryBiblePath(), 'utf-8')
   } catch {
     content = STORY_BIBLE_TEMPLATE
-    await writeFile(STORY_BIBLE_PATH, content, 'utf-8')
+    await writeFile(getStoryBiblePath(), content, 'utf-8')
   }
-  return { path: STORY_BIBLE_PATH, content }
+  return { path: getStoryBiblePath(), content }
 }
 
 // Parse a markdown document into a preamble (text before first ## heading) and
@@ -249,21 +248,21 @@ export function mergeStoryBibleContent(existing: string, incoming: string): stri
 }
 
 export async function writeStoryBibleFile(content: string): Promise<string> {
-  await mkdir(HOHOFF_DIR, { recursive: true })
+  await mkdir(hohoffDir(), { recursive: true })
   let existing: string
   try {
-    existing = await readFile(STORY_BIBLE_PATH, 'utf-8')
+    existing = await readFile(getStoryBiblePath(), 'utf-8')
   } catch {
     existing = STORY_BIBLE_TEMPLATE
   }
   const merged = mergeStoryBibleContent(existing, content)
-  await writeFile(STORY_BIBLE_PATH, merged, 'utf-8')
+  await writeFile(getStoryBiblePath(), merged, 'utf-8')
   return merged
 }
 
 export async function readStoryBibleFile(): Promise<string | null> {
   try {
-    return await readFile(STORY_BIBLE_PATH, 'utf-8')
+    return await readFile(getStoryBiblePath(), 'utf-8')
   } catch {
     return null
   }
@@ -286,7 +285,7 @@ async function collectMarkdownPaths(dir: string): Promise<string[]> {
 }
 
 export async function getProjectWordCount(): Promise<number> {
-  const paths = await collectMarkdownPaths(DRAFT_ROOT)
+  const paths = await collectMarkdownPaths(getDraftRoot())
   let total = 0
   for (const p of paths) {
     const content = await readFile(p, 'utf-8')
@@ -298,7 +297,7 @@ export async function getProjectWordCount(): Promise<number> {
 // ─── Revision system ─────────────────────────────────────────────────────────
 
 function revisionSlug(filePath: string): string {
-  const prefix = DRAFT_ROOT + '/'
+  const prefix = getDraftRoot() + '/'
   const rel = filePath.startsWith(prefix) ? filePath.slice(prefix.length) : filePath
   return rel.replace(/\.md$/, '').replace(/\//g, '__')
 }
@@ -310,7 +309,7 @@ function shortId(): string {
 export async function saveRevision(filePath: string, content: string): Promise<void> {
   assertInDraftRoot(filePath)
   const slug = revisionSlug(filePath)
-  const dir = join(REVISIONS_DIR, slug)
+  const dir = join(revisionsDir(), slug)
   await mkdir(dir, { recursive: true })
   const timestamp = Date.now()
   const id = `${timestamp}_${shortId()}`
@@ -328,7 +327,7 @@ export async function saveRevision(filePath: string, content: string): Promise<v
 export async function listRevisions(filePath: string): Promise<RevisionMeta[]> {
   assertInDraftRoot(filePath)
   const slug = revisionSlug(filePath)
-  const dir = join(REVISIONS_DIR, slug)
+  const dir = join(revisionsDir(), slug)
   try {
     const entries = (await readdir(dir)).filter((e) => e.endsWith('.json')).sort().reverse()
     return await Promise.all(
@@ -350,7 +349,7 @@ export async function loadRevision(filePath: string, revisionId: string): Promis
   assertInDraftRoot(filePath)
   if (!/^[\w-]+$/.test(revisionId)) throw new Error('Invalid revision ID')
   const slug = revisionSlug(filePath)
-  const revPath = join(REVISIONS_DIR, slug, `${revisionId}.json`)
+  const revPath = join(revisionsDir(), slug, `${revisionId}.json`)
   const raw = JSON.parse(await readFile(revPath, 'utf-8')) as { content: string }
   return raw.content
 }
@@ -359,7 +358,7 @@ export async function deleteRevision(filePath: string, revisionId: string): Prom
   assertInDraftRoot(filePath)
   if (!/^[\w-]+$/.test(revisionId)) throw new Error('Invalid revision ID')
   const slug = revisionSlug(filePath)
-  const revPath = join(REVISIONS_DIR, slug, `${revisionId}.json`)
+  const revPath = join(revisionsDir(), slug, `${revisionId}.json`)
   await unlink(revPath)
 }
 
@@ -380,7 +379,7 @@ export async function deleteFileOrDir(targetPath: string): Promise<void> {
 }
 
 export async function createMarkdownFile(parentPath: string, name: string): Promise<string> {
-  const dir = parentPath === '__root__' ? DRAFT_ROOT : parentPath
+  const dir = parentPath === '__root__' ? getDraftRoot() : parentPath
   assertInDraftRoot(dir)
   const filePath = join(dir, `${name}.md`)
   assertInDraftRoot(filePath)
@@ -389,7 +388,7 @@ export async function createMarkdownFile(parentPath: string, name: string): Prom
 }
 
 export async function createSubdirectory(parentPath: string, name: string): Promise<string> {
-  const parent = parentPath === '__root__' ? DRAFT_ROOT : parentPath
+  const parent = parentPath === '__root__' ? getDraftRoot() : parentPath
   assertInDraftRoot(parent)
   const newDir = join(parent, name)
   assertInDraftRoot(newDir)
@@ -399,7 +398,7 @@ export async function createSubdirectory(parentPath: string, name: string): Prom
 
 export async function moveFileOrDir(sourcePath: string, targetDirPath: string): Promise<string> {
   assertInDraftRoot(sourcePath)
-  const destDir = targetDirPath === '__root__' ? DRAFT_ROOT : targetDirPath
+  const destDir = targetDirPath === '__root__' ? getDraftRoot() : targetDirPath
   assertInDraftRoot(destDir)
   const newPath = join(destDir, basename(sourcePath))
   assertInDraftRoot(newPath)
@@ -458,9 +457,10 @@ export async function searchAcrossFiles(query: string, opts: SearchOptions): Pro
   // Also search the Story Bible
   const bibleContent = await readStoryBibleFile()
   if (bibleContent !== null) {
-    const prefix = DRAFT_ROOT + '/'
-    const rel = (STORY_BIBLE_PATH.startsWith(prefix) ? STORY_BIBLE_PATH.slice(prefix.length) : STORY_BIBLE_PATH).replace(/\.md$/, '')
-    const result = searchFileContent(bibleContent, regex, STORY_BIBLE_PATH, rel)
+    const prefix = getDraftRoot() + '/'
+    const storyBiblePath = getStoryBiblePath()
+    const rel = (storyBiblePath.startsWith(prefix) ? storyBiblePath.slice(prefix.length) : storyBiblePath).replace(/\.md$/, '')
+    const result = searchFileContent(bibleContent, regex, storyBiblePath, rel)
     if (result) results.push(result)
   }
 

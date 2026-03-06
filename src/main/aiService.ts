@@ -2,15 +2,20 @@ import Anthropic from '@anthropic-ai/sdk'
 import type { AIPayload, Attachment } from '../renderer/types/editor'
 import type { DraftDocument } from './fileSystem'
 import { readAllDraftFiles } from './fileSystem'
+import { getApiKey } from './globalConfig'
 
 let _client: Anthropic | null = null
 
+export function resetClient(): void {
+  _client = null
+}
+
 function getClient(): Anthropic {
   if (!_client) {
-    const apiKey = process.env.ANTHROPIC_API_KEY
-if (!apiKey || apiKey === 'your-api-key-here') {
+    const apiKey = getApiKey()
+    if (!apiKey || apiKey === 'your-api-key-here') {
       throw new Error(
-        'ANTHROPIC_API_KEY is not set. Add it to app/.env.local'
+        'API key not set. Open Hohoff → Preferences to configure it.'
       )
     }
     _client = new Anthropic({ apiKey })
