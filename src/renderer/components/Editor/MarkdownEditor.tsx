@@ -213,6 +213,7 @@ const annotationHoverTooltip = hoverTooltip(
         create() {
           const dom = document.createElement('div')
           dom.className = 'annotation-tooltip'
+          dom.addEventListener('mousemove', (e) => e.stopPropagation())
           const label = document.createElement('span')
           label.className = 'annotation-tooltip-label'
           label.textContent = 'Your comment'
@@ -243,6 +244,7 @@ const annotationHoverTooltip = hoverTooltip(
       create() {
         const dom = document.createElement('div')
         dom.className = 'annotation-tooltip'
+        dom.addEventListener('mousemove', (e) => e.stopPropagation())
 
         const label = document.createElement('span')
         label.className = 'annotation-tooltip-label'

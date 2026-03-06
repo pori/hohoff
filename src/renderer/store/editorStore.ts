@@ -109,6 +109,19 @@ function scheduleSave(getData: () => Record<string, unknown>): void {
   }, 1500)
 }
 
+// Debounced auto-save — writes the active file to disk 10s after the user stops typing,
+// protecting against content loss if the renderer crashes while the editor is idle.
+let _autoSaveTimer: ReturnType<typeof setTimeout> | null = null
+function scheduleAutoSave(getData: () => { path: string; content: string } | null): void {
+  if (_autoSaveTimer) clearTimeout(_autoSaveTimer)
+  _autoSaveTimer = setTimeout(() => {
+    const d = getData()
+    if (!d) return
+    const api = (window as unknown as { api?: { writeFile: (p: string, c: string) => Promise<void> } }).api
+    api?.writeFile(d.path, d.content).catch(console.error)
+  }, 10_000)
+}
+
 export const useEditorStore = create<EditorState>((set, get) => ({
   fileTree: [],
   setFileTree: (fileTree) => set({ fileTree }),
@@ -175,7 +188,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       }
     })
   },
-  setContent: (content) => set({ activeFileContent: content, isDirty: true }),
+  setContent: (content) => {
+    set({ activeFileContent: content, isDirty: true })
+    scheduleAutoSave(() => {
+      const { activeFilePath, activeFileContent } = get()
+      return activeFilePath ? { path: activeFilePath, content: activeFileContent } : null
+    })
+  },
   markSaved: () => set({ isDirty: false }),
 
   chatSessionsByFile: {},

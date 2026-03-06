@@ -30,6 +30,7 @@ export function FileTreeNode({ node, depth, dirPath, siblings }: Props): JSX.Ele
 
   const openFile = async (): Promise<void> => {
     if (node.type === 'file') {
+      if (node.path === activeFilePath) return
       const content = await window.api.readFile(node.path)
       setActiveFile(node.path, content)
     }
