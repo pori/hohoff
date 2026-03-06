@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { EditorView, Decoration, type DecorationSet, hoverTooltip, keymap } from '@codemirror/view'
-import { EditorState, StateField, StateEffect, Annotation, RangeSetBuilder, Compartment, Transaction } from '@codemirror/state'
+import { EditorState, EditorSelection, StateField, StateEffect, Annotation, RangeSetBuilder, Compartment, Transaction } from '@codemirror/state'
 import { markdown } from '@codemirror/lang-markdown'
 import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
 import { history, defaultKeymap, historyKeymap, invertedEffects, selectAll, indentLess } from '@codemirror/commands'
@@ -434,6 +434,110 @@ function buildTheme(fontSize: number, dark: boolean): ReturnType<typeof EditorVi
   )
 }
 
+// --- Markdown formatting helpers ---
+
+function wrapOrUnwrap(view: EditorView, marker: string): boolean {
+  const { state } = view
+  const changes = state.changeByRange(range => {
+    const selected = state.sliceDoc(range.from, range.to)
+    const m = marker.length
+
+    // Case 1: selection itself includes the markers (e.g. user selected "**bold**")
+    if (selected.startsWith(marker) && selected.endsWith(marker) && selected.length >= m * 2 + 1) {
+      const inner = selected.slice(m, selected.length - m)
+      return {
+        changes: { from: range.from, to: range.to, insert: inner },
+        range: EditorSelection.range(range.from, range.from + inner.length)
+      }
+    }
+
+    // Case 2: markers sit just outside the selection — happens after a wrap when
+    // the selection is left on the inner text (e.g. cursor on "bold" inside "**bold**")
+    const before = range.from >= m ? state.sliceDoc(range.from - m, range.from) : ''
+    const after = state.sliceDoc(range.to, range.to + m)
+    if (before === marker && after === marker) {
+      return {
+        changes: [
+          { from: range.from - m, to: range.from, insert: '' },
+          { from: range.to, to: range.to + m, insert: '' }
+        ],
+        range: EditorSelection.range(range.from - m, range.to - m)
+      }
+    }
+
+    // Case 3: not wrapped — wrap it
+    const wrapped = marker + selected + marker
+    return {
+      changes: { from: range.from, to: range.to, insert: wrapped },
+      range: EditorSelection.range(range.from + m, range.from + m + selected.length)
+    }
+  })
+  view.dispatch(state.update(changes, { userEvent: 'input' }))
+  return true
+}
+
+function toggleLinePrefix(view: EditorView, prefix: string): boolean {
+  const { state } = view
+  const changes = state.changeByRange(range => {
+    const lineFrom = state.doc.lineAt(range.from)
+    const lineTo = state.doc.lineAt(range.to)
+    const insertions: { from: number; to: number; insert: string }[] = []
+    let removing = true
+    for (let ln = lineFrom.number; ln <= lineTo.number; ln++) {
+      if (!state.doc.line(ln).text.startsWith(prefix)) { removing = false; break }
+    }
+    for (let ln = lineFrom.number; ln <= lineTo.number; ln++) {
+      const line = state.doc.line(ln)
+      if (removing) {
+        insertions.push({ from: line.from, to: line.from + prefix.length, insert: '' })
+      } else if (!line.text.startsWith(prefix)) {
+        insertions.push({ from: line.from, to: line.from, insert: prefix })
+      }
+    }
+    return { changes: insertions, range }
+  })
+  view.dispatch(state.update(changes, { userEvent: 'input' }))
+  return true
+}
+
+function setHeading(view: EditorView, level: number): boolean {
+  const { state } = view
+  const prefix = '#'.repeat(level) + ' '
+  const changes = state.changeByRange(range => {
+    const lineFrom = state.doc.lineAt(range.from)
+    const lineTo = state.doc.lineAt(range.to)
+    const insertions: { from: number; to: number; insert: string }[] = []
+    for (let ln = lineFrom.number; ln <= lineTo.number; ln++) {
+      const line = state.doc.line(ln)
+      const existingMatch = line.text.match(/^(#{1,6} )/)
+      const existingLen = existingMatch ? existingMatch[0].length : 0
+      if (line.text.startsWith(prefix)) {
+        insertions.push({ from: line.from, to: line.from + prefix.length, insert: '' })
+      } else {
+        insertions.push({ from: line.from, to: line.from + existingLen, insert: prefix })
+      }
+    }
+    return { changes: insertions, range }
+  })
+  view.dispatch(state.update(changes, { userEvent: 'input' }))
+  return true
+}
+
+function insertLink(view: EditorView): boolean {
+  const { state } = view
+  const changes = state.changeByRange(range => {
+    const selected = state.sliceDoc(range.from, range.to)
+    const insert = `[${selected}]()`
+    const cursorPos = range.from + selected.length + 3 // inside ()
+    return {
+      changes: { from: range.from, to: range.to, insert },
+      range: EditorSelection.cursor(cursorPos)
+    }
+  })
+  view.dispatch(state.update(changes, { userEvent: 'input' }))
+  return true
+}
+
 export function MarkdownEditor(): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
@@ -480,6 +584,15 @@ export function MarkdownEditor(): JSX.Element {
               }
             },
             { key: 'Shift-Tab', run: indentLess },
+            { key: 'Mod-b', run: (view) => wrapOrUnwrap(view, '**') },
+            { key: 'Mod-i', run: (view) => wrapOrUnwrap(view, '*') },
+            { key: 'Mod-Shift-s', run: (view) => wrapOrUnwrap(view, '~~') },
+            { key: 'Mod-e', run: (view) => wrapOrUnwrap(view, '`') },
+            { key: 'Mod-k', run: insertLink },
+            { key: 'Mod-Shift-.', run: (view) => toggleLinePrefix(view, '> ') },
+            { key: 'Mod-1', run: (view) => setHeading(view, 1) },
+            { key: 'Mod-2', run: (view) => setHeading(view, 2) },
+            { key: 'Mod-3', run: (view) => setHeading(view, 3) },
             ...searchKeymap,
             ...defaultKeymap,
             ...historyKeymap
