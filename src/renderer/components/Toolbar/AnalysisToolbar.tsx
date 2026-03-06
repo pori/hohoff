@@ -340,8 +340,11 @@ export function AnalysisToolbar(): JSX.Element {
           </span>
         )}
         {activeFilePath && (
-          <span className="toolbar-filename">
-            {activeFilePath.split('/').pop()?.replace(/\.md$/, '')}
+          <span className="toolbar-filename" title={activeFilePath.split('/').pop()?.replace(/\.md$/, '')}>
+            {(() => {
+              const name = activeFilePath.split('/').pop()?.replace(/\.md$/, '') ?? ''
+              return name.length > 30 ? name.slice(0, 30) + '…' : name
+            })()}
           </span>
         )}
       </div>

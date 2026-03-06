@@ -22,6 +22,7 @@
   align-items: center;
   gap: 10px;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .toolbar-btn {
@@ -93,7 +94,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 260px;
+  width: 180px;
 }
 
 .toolbar-fontsize {
