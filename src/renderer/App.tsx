@@ -14,7 +14,7 @@ export default function App(): JSX.Element {
   const {
     setFileTree, activeFilePath, isDirty, markSaved, activeFileContent, theme, toggleTheme,
     loadSession, revisionPanelOpen, toggleRevisionPanel, fontSize, setFontSize,
-    openProjectSearch
+    openProjectSearch, clearActiveFile
   } = useEditorStore()
   const [sidebarOpen, setSidebarOpen] = useState(
     () => localStorage.getItem('sidebarOpen') !== 'false'
@@ -23,12 +23,26 @@ export default function App(): JSX.Element {
     () => localStorage.getItem('chatOpen') !== 'false'
   )
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [isFirstRun, setIsFirstRun] = useState(false)
 
-  // Load file tree, apply persisted theme, and restore last session
+  const switchProject = async (newPath: string): Promise<void> => {
+    await window.api.writeConfig({ projectPath: newPath })
+    clearActiveFile()
+    loadSession()
+    window.api.listFiles().then(setFileTree)
+  }
+
+  // Load file tree, apply persisted theme, restore session, and detect first run
   useEffect(() => {
     window.api.listFiles().then(setFileTree)
     document.documentElement.classList.toggle('light', theme === 'light')
     loadSession()
+    window.api.readConfig().then((cfg) => {
+      if (!cfg.apiKey || !cfg.projectPath) {
+        setIsFirstRun(true)
+        setSettingsOpen(true)
+      }
+    })
   }, [])
 
   // Handle menu actions sent from the main process
@@ -58,6 +72,9 @@ export default function App(): JSX.Element {
         openProjectSearch()
       } else if (action === 'openSettings') {
         setSettingsOpen(true)
+      } else if (action === 'openProject') {
+        const picked = await window.api.pickProjectFolder()
+        if (picked) await switchProject(picked)
       }
     })
   }, [activeFilePath, isDirty, activeFileContent, fontSize])
@@ -136,7 +153,17 @@ export default function App(): JSX.Element {
         <ChatPanel />
       </aside>
       <ProjectSearchModal />
-      {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
+      {settingsOpen && (
+        <SettingsDialog
+          onClose={() => { setSettingsOpen(false); setIsFirstRun(false) }}
+          isSetup={isFirstRun}
+          onProjectChanged={() => {
+            clearActiveFile()
+            loadSession()
+            window.api.listFiles().then(setFileTree)
+          }}
+        />
+      )}
     </div>
   )
 }

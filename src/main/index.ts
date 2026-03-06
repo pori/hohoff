@@ -54,6 +54,12 @@ function buildAppMenu(win: BrowserWindow): void {
       label: 'File',
       submenu: [
         {
+          label: 'Open…',
+          accelerator: 'CmdOrCtrl+Shift+O',
+          click: () => send(win, 'openProject')
+        },
+        { type: 'separator' },
+        {
           label: 'Save',
           accelerator: 'CmdOrCtrl+S',
           click: () => send(win, 'save')
