@@ -50,6 +50,7 @@ export function ChatPanel(): JSX.Element {
   const [pendingAttachmentCount, setPendingAttachmentCount] = useState(0)
   const [feedbackNotice, setFeedbackNotice] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const scrollRafRef = useRef<number | null>(null)
   const prevAnnotationCountRef = useRef(annotations.length)
 
   // Collapse history when switching files
@@ -119,12 +120,14 @@ export function ChatPanel(): JSX.Element {
     }
   }
 
-  // Auto-scroll to bottom when new content arrives
+  // Auto-scroll to bottom when new content arrives (coalesced to one scroll per animation frame)
   useEffect(() => {
-    const el = scrollRef.current
-    if (el) {
-      el.scrollTop = el.scrollHeight
-    }
+    if (scrollRafRef.current !== null) return
+    scrollRafRef.current = requestAnimationFrame(() => {
+      scrollRafRef.current = null
+      const el = scrollRef.current
+      if (el) el.scrollTop = el.scrollHeight
+    })
   }, [chatHistory])
 
   const hasFile = Boolean(activeFilePath)

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, memo } from 'react'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import type { ChatMessage, TextAnnotation } from '../../types/editor'
@@ -30,7 +30,7 @@ interface Props {
   linkedAnnotations?: TextAnnotation[]
 }
 
-export function ChatMessageItem({ message, linkedAnnotations }: Props): JSX.Element {
+function ChatMessageItemInner({ message, linkedAnnotations }: Props): JSX.Element {
   const { activeFilePath, markSaved } = useEditorStore()
 
   const html = useMemo(() => {
@@ -123,3 +123,13 @@ export function ChatMessageItem({ message, linkedAnnotations }: Props): JSX.Elem
     </div>
   )
 }
+
+function areEqual(prev: Props, next: Props): boolean {
+  if (prev.message.content !== next.message.content) return false
+  if (prev.message.id !== next.message.id) return false
+  const prevIds = prev.linkedAnnotations?.map(a => a.id).join(',') ?? ''
+  const nextIds = next.linkedAnnotations?.map(a => a.id).join(',') ?? ''
+  return prevIds === nextIds
+}
+
+export const ChatMessageItem = memo(ChatMessageItemInner, areEqual)

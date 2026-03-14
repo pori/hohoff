@@ -135,11 +135,27 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('ai:streamMessage', async (event, payload: AIPayload) => {
     try {
       const storyBibleContent = (await readStoryBibleFile()) ?? undefined
+
+      let pending = ''
+      let flushTimer: ReturnType<typeof setTimeout> | null = null
+
+      const flush = (): void => {
+        if (flushTimer) { clearTimeout(flushTimer); flushTimer = null }
+        if (pending && !event.sender.isDestroyed()) {
+          event.sender.send('ai:chunk', pending)
+          pending = ''
+        }
+      }
+
       await streamMessage(payload, storyBibleContent, (chunk: string) => {
-        if (!event.sender.isDestroyed()) {
-          event.sender.send('ai:chunk', chunk)
+        pending += chunk
+        if (!flushTimer) {
+          flushTimer = setTimeout(flush, 30)
         }
       })
+
+      flush()
+
       if (!event.sender.isDestroyed()) {
         event.sender.send('ai:done')
       }

@@ -256,17 +256,24 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       if (last?.role === 'assistant') {
         history[history.length - 1] = { ...last, content: last.content + chunk }
       }
-      if (!s.activeFilePath) return { chatHistory: history }
-      const activeId = s.activeSessionIdByFile[s.activeFilePath]
-      const sessions = (s.chatSessionsByFile[s.activeFilePath] ?? []).map(sess =>
-        sess.id === activeId ? { ...sess, messages: history } : sess
-      )
-      return { chatHistory: history, chatSessionsByFile: { ...s.chatSessionsByFile, [s.activeFilePath]: sessions } }
+      return { chatHistory: history }
     })
   },
 
   setAILoading: (isAILoading) => {
-    set({ isAILoading })
+    set((s) => {
+      if (isAILoading) return { isAILoading }
+      // Sync the completed chatHistory into chatSessionsByFile once at stream end
+      if (!s.activeFilePath) return { isAILoading }
+      const activeId = s.activeSessionIdByFile[s.activeFilePath]
+      const sessions = (s.chatSessionsByFile[s.activeFilePath] ?? []).map(sess =>
+        sess.id === activeId ? { ...sess, messages: s.chatHistory } : sess
+      )
+      return {
+        isAILoading,
+        chatSessionsByFile: { ...s.chatSessionsByFile, [s.activeFilePath]: sessions }
+      }
+    })
     // When AI finishes, persist the completed chat history
     if (!isAILoading) {
       scheduleSave(() => {
