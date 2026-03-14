@@ -34,10 +34,11 @@ const rawAnnotationsField = StateField.define<TextAnnotation[]>({
       if (effect.is(setAnnotationsEffect)) return effect.value
     }
     if (tr.docChanged && annotations.length > 0) {
+      const oldLen = tr.changes.length
       return annotations.map(a => ({
         ...a,
-        from: tr.changes.mapPos(a.from, -1),
-        to:   tr.changes.mapPos(a.to,   1)
+        from: tr.changes.mapPos(Math.min(a.from, oldLen), -1),
+        to:   tr.changes.mapPos(Math.min(a.to,   oldLen),  1)
       }))
     }
     return annotations
@@ -731,9 +732,13 @@ export function MarkdownEditor(): JSX.Element {
     const view = viewRef.current
     if (!view) return
     const content = view.state.doc.toString()
+    const docLen = content.length
     const reanchored = reanchorAnnotations(annotations, content)
     const trackedById = new Map(view.state.field(rawAnnotationsField).map(a => [a.id, a]))
-    const toDispatch = reanchored.map(a => trackedById.get(a.id) ?? a)
+    const toDispatch = reanchored.map(a => {
+      const tracked = trackedById.get(a.id)
+      return (tracked && tracked.from >= 0 && tracked.to <= docLen) ? tracked : a
+    })
     view.dispatch({
       effects: setAnnotationsEffect.of(toDispatch),
       annotations: [Transaction.addToHistory.of(false)]
