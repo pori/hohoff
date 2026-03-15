@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { EditorView, Decoration, type DecorationSet, hoverTooltip, keymap } from '@codemirror/view'
+import { EditorView, Decoration, type DecorationSet, hoverTooltip, keymap, ViewPlugin, WidgetType, type ViewUpdate } from '@codemirror/view'
 import { EditorState, EditorSelection, StateField, StateEffect, Annotation, RangeSetBuilder, Compartment, Transaction } from '@codemirror/state'
 import { markdown } from '@codemirror/lang-markdown'
-import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
+import { syntaxHighlighting, defaultHighlightStyle, syntaxTree } from '@codemirror/language'
 import { history, defaultKeymap, historyKeymap, invertedEffects, selectAll, indentLess } from '@codemirror/commands'
 import { search, searchKeymap, openSearchPanel } from '@codemirror/search'
 import { marked } from 'marked'
@@ -359,6 +359,41 @@ const annotationHistory = invertedEffects.of(tr => {
 
 const themeCompartment = new Compartment()
 
+// Horizontal rule widget — replaces `---` lines with a visual scene-break line
+class HrWidget extends WidgetType {
+  toDOM(): HTMLElement {
+    const el = document.createElement('span')
+    el.className = 'cm-hr-widget'
+    return el
+  }
+  ignoreEvent() { return false }
+}
+
+function buildHrDecos(view: EditorView): DecorationSet {
+  const builder = new RangeSetBuilder<Decoration>()
+  syntaxTree(view.state).iterate({
+    enter(node) {
+      if (node.name === 'HorizontalRule') {
+        builder.add(node.from, node.to, Decoration.replace({ widget: new HrWidget() }))
+      }
+    }
+  })
+  return builder.finish()
+}
+
+const hrPlugin = ViewPlugin.fromClass(
+  class {
+    decorations: DecorationSet
+    constructor(view: EditorView) { this.decorations = buildHrDecos(view) }
+    update(update: ViewUpdate) {
+      if (update.docChanged || update.viewportChanged) {
+        this.decorations = buildHrDecos(update.view)
+      }
+    }
+  },
+  { decorations: v => v.decorations }
+)
+
 function buildTheme(fontSize: number, dark: boolean): ReturnType<typeof EditorView.theme> {
   return EditorView.theme(
   {
@@ -393,6 +428,14 @@ function buildTheme(fontSize: number, dark: boolean): ReturnType<typeof EditorVi
     '.tok-heading2': { fontSize: '1.2em' },
     '.tok-emphasis': { fontStyle: 'italic' },
     '.tok-strong': { fontWeight: '700' },
+    '.cm-hr-widget': {
+      display: 'inline-block',
+      width: '100%',
+      height: '0',
+      borderTop: '1px solid var(--border)',
+      opacity: '0.45',
+      verticalAlign: 'middle',
+    },
 
     // Annotation highlight styles
     '.annotation-passive_voice': {
@@ -598,12 +641,13 @@ export function MarkdownEditor(): JSX.Element {
             ...defaultKeymap,
             ...historyKeymap
           ]),
-          markdown(),
+          markdown({ extensions: [{ remove: ['SetextHeading'] }] }),
           syntaxHighlighting(defaultHighlightStyle),
           rawAnnotationsField,
           annotationField,
           annotationHoverTooltip,
           annotationHistory,
+          hrPlugin,
           themeCompartment.of(buildTheme(fontSize, theme === 'dark')),
           EditorView.lineWrapping,
           EditorView.updateListener.of((update) => {
