@@ -21,7 +21,7 @@ try {
 export const getConfigDir = (): string => CONFIG_DIR
 
 export const getDraftRoot = (): string =>
-  _config.projectPath ?? process.env.DRAFT_PATH ?? '/Users/pori/WebstormProjects/hohoff/draft'
+  _config.projectPath ?? process.env.DRAFT_PATH ?? join(homedir(), 'Documents', 'hohoff-draft')
 
 export const getApiKey = (): string | undefined =>
   _config.apiKey ?? process.env.ANTHROPIC_API_KEY
