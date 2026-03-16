@@ -113,10 +113,6 @@
   color: var(--accent);
 }
 
-.app-titlebar-revision-btn {
-  font-size: 14px;
-}
-
 .app-titlebar-icon-group {
   display: flex;
   align-items: center;

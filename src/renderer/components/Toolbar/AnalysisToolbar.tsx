@@ -1,8 +1,10 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useEditorStore } from '../../store/editorStore'
 import { detectPassiveVoice } from '../../utils/passiveVoice'
 import { parseAnnotationsFromAIResponse } from '../../utils/annotationParser'
 import { tooltipAnalysisCache } from '../Editor/MarkdownEditor'
+import '../FileTree/ContextMenu.css'
 import './Toolbar.css'
 
 const BIBLE_PROMPTS = {
@@ -65,8 +67,14 @@ export function AnalysisToolbar(): JSX.Element {
     setFontSize,
     setRightPanelTab,
     outlineOpen,
-    toggleOutline
+    toggleOutline,
+    revisionPanelOpen,
+    toggleRevisionPanel
   } = useEditorStore()
+
+  const [analyzeOpen, setAnalyzeOpen] = useState(false)
+  const analyzeButtonRef = useRef<HTMLButtonElement>(null)
+  const analyzeMenuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     window.api.getProjectWordCount().then(setProjectWordCount).catch(() => {})
@@ -78,6 +86,32 @@ export function AnalysisToolbar(): JSX.Element {
       window.api.getProjectWordCount().then(setProjectWordCount).catch(() => {})
     }
   }, [isDirty])
+
+  // Close dropdown on file change
+  useEffect(() => { setAnalyzeOpen(false) }, [activeFilePath])
+
+  // Click-outside closes dropdown
+  useEffect(() => {
+    if (!analyzeOpen) return
+    const handler = (e: MouseEvent): void => {
+      if (
+        !analyzeButtonRef.current?.contains(e.target as Node) &&
+        !analyzeMenuRef.current?.contains(e.target as Node)
+      ) {
+        setAnalyzeOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [analyzeOpen])
+
+  // Escape closes dropdown
+  useEffect(() => {
+    if (!analyzeOpen) return
+    const handler = (e: KeyboardEvent): void => { if (e.key === 'Escape') setAnalyzeOpen(false) }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [analyzeOpen])
 
   const hasFile = Boolean(activeFilePath)
   const isStoryBible = activeFilePath?.endsWith('Story Bible.md') ?? false
@@ -182,6 +216,8 @@ export function AnalysisToolbar(): JSX.Element {
   const styleCount = annotations.filter((a) => a.type === 'style').length
   const showTellCount = annotations.filter((a) => a.type === 'show_tell').length
   const critiqueCount = annotations.filter((a) => a.type === 'critique').length
+  const totalCount = passiveCount + consistencyCount + styleCount + showTellCount + critiqueCount
+  const anyActive = Boolean(analysisMode)
   const docWordCount = countWords(activeFileContent)
 
   return (
@@ -226,62 +262,15 @@ export function AnalysisToolbar(): JSX.Element {
         ) : (
           <>
             <button
-              className={`toolbar-btn${analysisMode === 'passive_voice' ? ' active' : ''}`}
-              onClick={runPassiveVoice}
-              disabled={!hasFile}
-              title="Highlight passive voice sentences instantly (no AI required)"
-            >
-              Passive Voice
-              {passiveCount > 0 && (
-                <span className="toolbar-badge">{passiveCount}</span>
-              )}
-            </button>
-
-            <button
-              className={`toolbar-btn${analysisMode === 'consistency' ? ' active' : ''}`}
-              onClick={() => runAIAnalysis('consistency')}
+              ref={analyzeButtonRef}
+              className={`toolbar-btn toolbar-analyze-btn${anyActive ? ' active' : ''}`}
+              onClick={() => setAnalyzeOpen((v) => !v)}
               disabled={!hasFile || isAILoading}
-              title="Check character names, timeline, and repeated phrases via AI"
+              title="Run analysis on this chapter"
             >
-              {isAILoading && analysisMode === 'consistency' ? 'Checking…' : 'Consistency'}
-              {consistencyCount > 0 && (
-                <span className="toolbar-badge">{consistencyCount}</span>
-              )}
-            </button>
-
-            <button
-              className={`toolbar-btn${analysisMode === 'style' ? ' active' : ''}`}
-              onClick={() => runAIAnalysis('style')}
-              disabled={!hasFile || isAILoading}
-              title="Pacing, sentence variety, show-don't-tell feedback via AI"
-            >
-              {isAILoading && analysisMode === 'style' ? 'Analyzing…' : 'Style'}
-              {styleCount > 0 && (
-                <span className="toolbar-badge">{styleCount}</span>
-              )}
-            </button>
-
-            <button
-              className={`toolbar-btn${analysisMode === 'show_tell' ? ' active' : ''}`}
-              onClick={() => runAIAnalysis('show_tell')}
-              disabled={!hasFile || isAILoading}
-              title="Find passages that tell rather than show via AI"
-            >
-              {isAILoading && analysisMode === 'show_tell' ? 'Reading…' : 'Show vs Tell'}
-              {showTellCount > 0 && (
-                <span className="toolbar-badge">{showTellCount}</span>
-              )}
-            </button>
-
-            <button
-              className={`toolbar-btn${analysisMode === 'critique' ? ' active' : ''}`}
-              onClick={() => runAIAnalysis('critique')}
-              disabled={!hasFile || isAILoading}
-              title="Honest overall critique of this chapter via AI"
-            >
-              {isAILoading && analysisMode === 'critique' ? 'Reading…' : 'Critique'}
-              {critiqueCount > 0 && (
-                <span className="toolbar-badge">{critiqueCount}</span>
+              {isAILoading ? 'Analyzing…' : `Analyze ${analyzeOpen ? '▴' : '▾'}`}
+              {totalCount > 0 && !isAILoading && (
+                <span className="toolbar-analyze-badge">{totalCount}</span>
               )}
             </button>
 
@@ -294,11 +283,68 @@ export function AnalysisToolbar(): JSX.Element {
                 Clear
               </button>
             )}
+
+            {analyzeOpen && analyzeButtonRef.current && createPortal(
+              (() => {
+                const rect = analyzeButtonRef.current!.getBoundingClientRect()
+                return (
+                  <div
+                    ref={analyzeMenuRef}
+                    className="context-menu toolbar-analyze-menu"
+                    style={{ top: rect.bottom + 4, left: rect.left }}
+                  >
+                    <button
+                      className={`context-menu-item${analysisMode === 'passive_voice' ? ' active' : ''}`}
+                      onClick={() => { setAnalyzeOpen(false); runPassiveVoice() }}
+                    >
+                      <span>Passive Voice</span>
+                      {passiveCount > 0 && <span className="toolbar-analyze-count">{passiveCount}</span>}
+                    </button>
+                    <button
+                      className={`context-menu-item${analysisMode === 'consistency' ? ' active' : ''}`}
+                      onClick={() => { setAnalyzeOpen(false); void runAIAnalysis('consistency') }}
+                    >
+                      <span>Consistency</span>
+                      {consistencyCount > 0 && <span className="toolbar-analyze-count">{consistencyCount}</span>}
+                    </button>
+                    <button
+                      className={`context-menu-item${analysisMode === 'style' ? ' active' : ''}`}
+                      onClick={() => { setAnalyzeOpen(false); void runAIAnalysis('style') }}
+                    >
+                      <span>Style</span>
+                      {styleCount > 0 && <span className="toolbar-analyze-count">{styleCount}</span>}
+                    </button>
+                    <button
+                      className={`context-menu-item${analysisMode === 'show_tell' ? ' active' : ''}`}
+                      onClick={() => { setAnalyzeOpen(false); void runAIAnalysis('show_tell') }}
+                    >
+                      <span>Show vs Tell</span>
+                      {showTellCount > 0 && <span className="toolbar-analyze-count">{showTellCount}</span>}
+                    </button>
+                    <button
+                      className={`context-menu-item${analysisMode === 'critique' ? ' active' : ''}`}
+                      onClick={() => { setAnalyzeOpen(false); void runAIAnalysis('critique') }}
+                    >
+                      <span>Critique</span>
+                      {critiqueCount > 0 && <span className="toolbar-analyze-count">{critiqueCount}</span>}
+                    </button>
+                  </div>
+                )
+              })(),
+              document.body
+            )}
           </>
         )}
       </div>
 
       <div className="toolbar-right">
+        <button
+          className={`toolbar-btn toolbar-btn-outline${revisionPanelOpen ? ' active' : ''}`}
+          onClick={toggleRevisionPanel}
+          title="Revision history"
+        >
+          ⟳
+        </button>
         <button
           className={`toolbar-btn toolbar-btn-outline${outlineOpen ? ' active' : ''}`}
           onClick={toggleOutline}

@@ -122,13 +122,6 @@ export default function App(): JSX.Element {
           </div>
           <div className="app-titlebar-icon-group">
             <button
-              className={`app-titlebar-theme-btn app-titlebar-revision-btn${revisionPanelOpen ? ' active' : ''}`}
-              onClick={toggleRevisionPanel}
-              title="Revision history"
-            >
-              ⟳
-            </button>
-            <button
               className="app-titlebar-theme-btn"
               onClick={toggleTheme}
               title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
