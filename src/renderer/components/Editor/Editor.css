@@ -173,6 +173,7 @@
 }
 
 .annotation-tooltip {
+  position: relative;
   background: var(--message-bg);
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -182,6 +183,20 @@
   font-size: 13px;
   line-height: 1.5;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+/* Invisible bridge that extends CodeMirror's isInTooltip() hit-area into the
+   gap between the card and the annotation text, preventing the card from
+   dismissing while the mouse travels between them. */
+.annotation-tooltip > .cm-tooltip-arrow {
+  position: absolute;
+  bottom: -12px;
+  left: 0;
+  right: 0;
+  height: 12px;
+  pointer-events: none;
+  background: transparent;
+  border: none;
 }
 
 .annotation-tooltip-divider {

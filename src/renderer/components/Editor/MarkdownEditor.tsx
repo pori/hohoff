@@ -209,7 +209,8 @@ const annotationHoverTooltip = hoverTooltip(
     // User comments: show static tooltip with the comment text — no AI streaming
     if (ann.type === 'user_comment') {
       return {
-        pos,
+        pos: ann.from,
+        end: ann.to,
         above: true,
         create() {
           const dom = document.createElement('div')
@@ -234,13 +235,17 @@ const annotationHoverTooltip = hoverTooltip(
           body.className = 'annotation-tooltip-body'
           body.textContent = ann.comment ?? ann.message
           dom.appendChild(body)
+          const bridge = document.createElement('div')
+          bridge.className = 'cm-tooltip-arrow'
+          dom.appendChild(bridge)
           return { dom, destroy() {} }
         }
       }
     }
 
     return {
-      pos,
+      pos: ann.from,
+      end: ann.to,
       above: true,
       create() {
         const dom = document.createElement('div')
@@ -301,6 +306,10 @@ const annotationHoverTooltip = hoverTooltip(
             }
           }
         })
+
+        const bridge = document.createElement('div')
+        bridge.className = 'cm-tooltip-arrow'
+        dom.appendChild(bridge)
 
         return { dom, destroy() { cancelAnalysis() } }
       }
