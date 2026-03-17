@@ -59,6 +59,10 @@
       "icon": "resources/icon.ico",
       "target": [{ "target": "nsis", "arch": ["x64"] }]
     },
+    "linux": {
+      "icon": "resources/icon.png",
+      "target": [{ "target": "AppImage", "arch": ["x64"] }]
+    },
     "files": [
       "out/**/*"
     ],
