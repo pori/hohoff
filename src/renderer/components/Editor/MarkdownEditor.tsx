@@ -274,9 +274,25 @@ const annotationHoverTooltip = hoverTooltip(
         body.className = 'annotation-tooltip-body'
         dom.appendChild(body)
 
+        let rafId: number | null = null
+        let pendingText = ''
+
         function showText(text: string, streaming = false): void {
+          if (streaming) {
+            pendingText = text
+            if (rafId === null) {
+              rafId = requestAnimationFrame(() => {
+                rafId = null
+                body.classList.remove('annotation-tooltip-loading')
+                const raw = marked.parse(pendingText + ' ▋') as string
+                body.innerHTML = DOMPurify.sanitize(raw)
+              })
+            }
+            return
+          }
+          if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null }
           body.classList.remove('annotation-tooltip-loading')
-          const raw = marked.parse(streaming ? text + ' ▋' : text) as string
+          const raw = marked.parse(text) as string
           body.innerHTML = DOMPurify.sanitize(raw)
         }
 
@@ -311,7 +327,7 @@ const annotationHoverTooltip = hoverTooltip(
         bridge.className = 'cm-tooltip-arrow'
         dom.appendChild(bridge)
 
-        return { dom, destroy() { cancelAnalysis() } }
+        return { dom, destroy() { cancelAnalysis(); if (rafId !== null) cancelAnimationFrame(rafId) } }
       }
     }
   },
