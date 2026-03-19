@@ -209,7 +209,7 @@ const annotationHoverTooltip = hoverTooltip(
     // User comments: show static tooltip with the comment text — no AI streaming
     if (ann.type === 'user_comment') {
       return {
-        pos: ann.from,
+        pos,
         end: ann.to,
         above: true,
         create() {
@@ -244,7 +244,7 @@ const annotationHoverTooltip = hoverTooltip(
     }
 
     return {
-      pos: ann.from,
+      pos,
       end: ann.to,
       above: true,
       create() {
