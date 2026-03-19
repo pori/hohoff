@@ -170,6 +170,7 @@
   background: transparent;
   padding: 0;
   box-shadow: none;
+  transform: translateX(-50%);
 }
 
 .annotation-tooltip {
