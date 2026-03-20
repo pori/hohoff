@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { EditorView, Decoration, type DecorationSet, hoverTooltip, keymap, ViewPlugin, WidgetType, type ViewUpdate } from '@codemirror/view'
 import { EditorState, EditorSelection, StateField, StateEffect, Annotation, RangeSetBuilder, Compartment, Transaction } from '@codemirror/state'
 import { markdown } from '@codemirror/lang-markdown'
-import { syntaxHighlighting, defaultHighlightStyle, syntaxTree } from '@codemirror/language'
+import { syntaxHighlighting, defaultHighlightStyle, syntaxTree, indentUnit } from '@codemirror/language'
 import { history, defaultKeymap, historyKeymap, invertedEffects, selectAll, indentLess } from '@codemirror/commands'
 import { search, searchKeymap, openSearchPanel } from '@codemirror/search'
 import { marked } from 'marked'
@@ -647,13 +647,14 @@ export function MarkdownEditor(): JSX.Element {
       state: EditorState.create({
         doc: '',
         extensions: [
+          indentUnit.of("    "),
           history(),
           search({ top: true }),
           keymap.of([
             {
               key: 'Tab',
               run: (view) => {
-                view.dispatch(view.state.replaceSelection('  '))
+                view.dispatch(view.state.replaceSelection('    '))
                 return true
               }
             },
