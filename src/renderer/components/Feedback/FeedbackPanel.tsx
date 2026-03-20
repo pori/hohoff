@@ -19,13 +19,14 @@ type AnalysisState =
 
 function badgeColor(type: TextAnnotation['type']): string {
   switch (type) {
-    case 'passive_voice': return 'rgba(255, 200, 0, 0.75)'
-    case 'consistency':   return 'rgba(220, 80, 80, 0.75)'
-    case 'style':         return 'rgba(80, 160, 255, 0.75)'
-    case 'show_tell':     return 'rgba(255, 140, 30, 0.75)'
-    case 'critique':      return 'rgba(160, 80, 220, 0.75)'
-    case 'custom':        return 'rgba(30, 200, 150, 0.8)'
-    case 'user_comment':  return 'rgba(240, 100, 180, 0.85)'
+    case 'passive_voice':  return 'rgba(255, 200, 0, 0.75)'
+    case 'consistency':    return 'rgba(220, 80, 80, 0.75)'
+    case 'style':          return 'rgba(80, 160, 255, 0.75)'
+    case 'show_tell':      return 'rgba(255, 140, 30, 0.75)'
+    case 'critique':       return 'rgba(160, 80, 220, 0.75)'
+    case 'custom':         return 'rgba(30, 200, 150, 0.8)'
+    case 'user_comment':   return 'rgba(240, 100, 180, 0.85)'
+    case 'document_note':  return 'rgba(80, 180, 240, 0.85)'
   }
 }
 
@@ -197,6 +198,36 @@ function UserCommentCard({ ann, onDismiss }: UserCommentCardProps): JSX.Element 
   )
 }
 
+interface DocumentNoteCardProps {
+  ann: TextAnnotation
+  onDismiss: () => void
+}
+
+function DocumentNoteCard({ ann, onDismiss }: DocumentNoteCardProps): JSX.Element {
+  return (
+    <div
+      className="fb-card fb-card-document_note"
+      style={{ '--badge-color': 'rgba(80, 180, 240, 0.85)' } as React.CSSProperties}
+    >
+      <div className="fb-card-header fb-card-header--no-jump">
+        <div className="fb-card-header-top">
+          <div className="fb-card-header-badges">
+            <span className="fb-card-badge">Document note</span>
+          </div>
+          <button
+            className="fb-card-dismiss"
+            onClick={onDismiss}
+            title="Dismiss"
+          >
+            ×
+          </button>
+        </div>
+      </div>
+      <div className="fb-card-user-comment-body">{ann.comment}</div>
+    </div>
+  )
+}
+
 interface ArchiveCardProps {
   ann: TextAnnotation
   onRemove?: () => void
@@ -222,7 +253,9 @@ function ArchiveCard({ ann, onRemove }: ArchiveCardProps): JSX.Element {
           </button>
         )}
       </div>
-      <span className="fb-archive-card-excerpt">"{ann.matchedText}"</span>
+      {ann.matchedText && (
+        <span className="fb-archive-card-excerpt">"{ann.matchedText}"</span>
+      )}
       {ann.comment && (
         <span className="fb-archive-card-comment">{ann.comment}</span>
       )}
@@ -242,8 +275,34 @@ export function FeedbackPanel(): JSX.Element {
     removeAnnotation,
     clearArchivedAnnotations,
     removeArchivedAnnotation,
+    addDocumentNote,
   } = useEditorStore()
   const [analyseAll, setAnalyseAll] = useState(false)
+  const [addingNote, setAddingNote] = useState(false)
+  const [noteText, setNoteText] = useState('')
+  const noteTextareaRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    if (addingNote) noteTextareaRef.current?.focus()
+  }, [addingNote])
+
+  function handleSaveNote(): void {
+    const trimmed = noteText.trim()
+    if (trimmed) addDocumentNote(trimmed)
+    setNoteText('')
+    setAddingNote(false)
+  }
+
+  function handleNoteKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>): void {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault()
+      handleSaveNote()
+    }
+    if (e.key === 'Escape') {
+      setNoteText('')
+      setAddingNote(false)
+    }
+  }
 
   const archivedAnnotations = activeFilePath
     ? (annotationsByFile[activeFilePath]?.annotations ?? []).filter(a => a.applied || a.dismissed)
@@ -275,6 +334,29 @@ export function FeedbackPanel(): JSX.Element {
           <p>No feedback yet.</p>
           <p>Run a critique from the toolbar to highlight issues in your text.</p>
         </div>
+        <div className="fb-add-note-section">
+          {addingNote ? (
+            <div className="fb-note-form">
+              <textarea
+                ref={noteTextareaRef}
+                className="fb-note-textarea"
+                placeholder="Write a note about this document…"
+                value={noteText}
+                onChange={(e) => setNoteText(e.target.value)}
+                onKeyDown={handleNoteKeyDown}
+                rows={3}
+              />
+              <div className="fb-note-form-actions">
+                <button className="fb-note-save-btn" onClick={handleSaveNote}>Save</button>
+                <button className="fb-note-cancel-btn" onClick={() => { setNoteText(''); setAddingNote(false) }}>Cancel</button>
+              </div>
+            </div>
+          ) : (
+            <button className="fb-add-note-btn" onClick={() => setAddingNote(true)}>
+              + Add document note
+            </button>
+          )}
+        </div>
       </div>
     )
   }
@@ -302,23 +384,61 @@ export function FeedbackPanel(): JSX.Element {
           </div>
 
           <div className="fb-list">
-            {[...annotations].sort((a, b) => a.from - b.from).map(ann =>
-              ann.type === 'user_comment'
-                ? <UserCommentCard
+            {[...annotations].sort((a, b) => (a.from ?? -1) - (b.from ?? -1)).map(ann => {
+              if (ann.type === 'document_note') {
+                return (
+                  <DocumentNoteCard
+                    key={ann.id}
+                    ann={ann}
+                    onDismiss={() => removeAnnotation(ann.id)}
+                  />
+                )
+              }
+              if (ann.type === 'user_comment') {
+                return (
+                  <UserCommentCard
                     key={ann.id}
                     ann={ann}
                     onDismiss={() => { cancelPendingDismiss(ann.id); removeAnnotation(ann.id) }}
                   />
-                : <FeedbackCard
-                    key={ann.id}
-                    ann={ann}
-                    autoAnalyse={analyseAll || ann.autoAnalyse === true}
-                    onDismiss={() => { cancelPendingDismiss(ann.id); removeAnnotation(ann.id); tooltipAnalysisCache.delete(ann.id) }}
-                  />
-            )}
+                )
+              }
+              return (
+                <FeedbackCard
+                  key={ann.id}
+                  ann={ann}
+                  autoAnalyse={analyseAll || ann.autoAnalyse === true}
+                  onDismiss={() => { cancelPendingDismiss(ann.id); removeAnnotation(ann.id); tooltipAnalysisCache.delete(ann.id) }}
+                />
+              )
+            })}
           </div>
         </>
       )}
+
+      <div className="fb-add-note-section">
+        {addingNote ? (
+          <div className="fb-note-form">
+            <textarea
+              ref={noteTextareaRef}
+              className="fb-note-textarea"
+              placeholder="Write a note about this document…"
+              value={noteText}
+              onChange={(e) => setNoteText(e.target.value)}
+              onKeyDown={handleNoteKeyDown}
+              rows={3}
+            />
+            <div className="fb-note-form-actions">
+              <button className="fb-note-save-btn" onClick={handleSaveNote}>Save</button>
+              <button className="fb-note-cancel-btn" onClick={() => { setNoteText(''); setAddingNote(false) }}>Cancel</button>
+            </div>
+          </div>
+        ) : (
+          <button className="fb-add-note-btn" onClick={() => setAddingNote(true)}>
+            + Add document note
+          </button>
+        )}
+      </div>
 
       {hasArchive && (
         <details className="fb-archive">

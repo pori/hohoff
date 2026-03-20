@@ -21,7 +21,8 @@ function badgeColor(type: TextAnnotation['type']): string {
     case 'show_tell':     return 'rgba(255, 140, 30, 0.75)'
     case 'critique':      return 'rgba(160, 80, 220, 0.75)'
     case 'custom':        return 'rgba(30, 200, 150, 0.8)'
-    case 'user_comment':  return 'rgba(240, 100, 180, 0.85)'
+    case 'user_comment':   return 'rgba(240, 100, 180, 0.85)'
+    case 'document_note':  return 'rgba(80, 180, 240, 0.85)'
   }
 }
 
@@ -95,11 +96,13 @@ function ChatMessageItemInner({ message, linkedAnnotations }: Props): JSX.Elemen
                 >
                   {ann.type.replace(/_/g, ' ')}
                 </span>
-                <span className="chat-suggestion-excerpt">
-                  "{ann.matchedText.length > 40
-                    ? ann.matchedText.slice(0, 38) + '…'
-                    : ann.matchedText}"
-                </span>
+                {ann.matchedText && (
+                  <span className="chat-suggestion-excerpt">
+                    "{ann.matchedText.length > 40
+                      ? ann.matchedText.slice(0, 38) + '…'
+                      : ann.matchedText}"
+                  </span>
+                )}
                 {ann.applied && (
                   <span className="chat-suggestion-applied">Applied</span>
                 )}

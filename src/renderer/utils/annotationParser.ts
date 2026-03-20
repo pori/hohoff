@@ -71,10 +71,11 @@ export function parseAnnotationsFromAIResponse(
 function deduplicateOverlapping(annotations: TextAnnotation[]): TextAnnotation[] {
   // Process largest spans first so the bigger annotation always wins over any
   // overlapping smaller one (e.g. a full sentence beats a sub-phrase within it).
-  const sorted = [...annotations].sort((a, b) => (b.to - b.from) - (a.to - a.from))
+  const sorted = [...annotations].sort((a, b) => ((b.to ?? 0) - (b.from ?? 0)) - ((a.to ?? 0) - (a.from ?? 0)))
   const kept: TextAnnotation[] = []
   for (const ann of sorted) {
-    const overlaps = kept.some(k => ann.from < k.to && ann.to > k.from)
+    if (ann.from === undefined || ann.to === undefined) { kept.push(ann); continue }
+    const overlaps = kept.some(k => k.from !== undefined && k.to !== undefined && ann.from! < k.to && ann.to! > k.from)
     if (!overlaps) kept.push(ann)
   }
   return kept
@@ -133,6 +134,10 @@ export function reanchorAnnotations(
   content: string
 ): TextAnnotation[] {
   return annotations.flatMap(ann => {
+    // Document notes have no position — keep them as-is
+    if (ann.from === undefined || ann.to === undefined || ann.matchedText === undefined) {
+      return [ann]
+    }
     // Fast path: stored position still matches the original text exactly (O(1))
     if (
       ann.from >= 0 &&

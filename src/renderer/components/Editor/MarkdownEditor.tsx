@@ -35,11 +35,14 @@ const rawAnnotationsField = StateField.define<TextAnnotation[]>({
     }
     if (tr.docChanged && annotations.length > 0) {
       const oldLen = tr.changes.length
-      return annotations.map(a => ({
-        ...a,
-        from: tr.changes.mapPos(Math.min(a.from, oldLen), -1),
-        to:   tr.changes.mapPos(Math.min(a.to,   oldLen),  1)
-      }))
+      return annotations.map(a => {
+        if (a.from === undefined || a.to === undefined) return a
+        return {
+          ...a,
+          from: tr.changes.mapPos(Math.min(a.from, oldLen), -1),
+          to:   tr.changes.mapPos(Math.min(a.to,   oldLen),  1)
+        }
+      })
     }
     return annotations
   }
@@ -159,6 +162,7 @@ export function scrollToAnnotation(ann: TextAnnotation): void {
   const view = currentEditorView
   if (!view) return
   const tracked = view.state.field(rawAnnotationsField).find(a => a.id === ann.id) ?? ann
+  if (tracked.from === undefined) return
   view.dispatch({
     selection: { anchor: tracked.from },
     effects: EditorView.scrollIntoView(tracked.from, { y: 'center' })
@@ -176,14 +180,14 @@ export function applyAnnotation(ann: TextAnnotation, suggestion: string): void {
   const { markAnnotationApplied } = useEditorStore.getState()
   const cmAnnotations = view.state.field(rawAnnotationsField)
   const tracked = cmAnnotations.find(a => a.id === ann.id)
-  if (!tracked) return
+  if (!tracked || tracked.from === undefined || tracked.to === undefined) return
   const changeSpec = { from: tracked.from, to: tracked.to, insert: suggestion }
   // Map surviving annotation positions through the text change so
   // their from/to reflect the new document offsets.
   const changeSet = view.state.changes(changeSpec)
   const remaining = cmAnnotations
     .filter(a => a.id !== ann.id)
-    .map(a => ({ ...a, from: changeSet.mapPos(a.from), to: changeSet.mapPos(a.to) }))
+    .map(a => a.from === undefined || a.to === undefined ? a : { ...a, from: changeSet.mapPos(a.from), to: changeSet.mapPos(a.to) })
   // Combine text replacement + annotation update in one transaction
   // so CM history treats them as a single undoable unit.
   view.dispatch({
@@ -200,7 +204,7 @@ export function applyAnnotation(ann: TextAnnotation, suggestion: string): void {
 const annotationHoverTooltip = hoverTooltip(
   (view, pos) => {
     const annotations = view.state.field(rawAnnotationsField)
-    const found = annotations.find(a => pos >= a.from && pos <= a.to)
+    const found = annotations.find(a => a.from !== undefined && a.to !== undefined && pos >= a.from && pos <= a.to)
     if (!found) return null
     // Capture in a new const so TypeScript preserves the non-undefined type
     // across the nested create() closure without requiring non-null assertions.
@@ -337,8 +341,9 @@ const annotationHoverTooltip = hoverTooltip(
 // Build a DecorationSet from an annotation list, clamped to docLen.
 function buildDecoSet(annotations: TextAnnotation[], docLen: number): DecorationSet {
   const builder = new RangeSetBuilder<Decoration>()
-  const sorted = [...annotations].sort((a, b) => a.from - b.from)
+  const sorted = [...annotations].sort((a, b) => (a.from ?? -1) - (b.from ?? -1))
   for (const ann of sorted) {
+    if (ann.from === undefined || ann.to === undefined) continue
     const from = Math.max(0, Math.min(ann.from, docLen))
     const to   = Math.max(from, Math.min(ann.to,   docLen))
     if (from < to) {
@@ -721,7 +726,7 @@ export function MarkdownEditor(): JSX.Element {
                   if (tr.annotation(Transaction.addToHistory) === false) continue
                   tr.changes.iterChangedRanges((fromA, toA) => {
                     for (const ann of preAnnotations) {
-                      if (fromA < ann.to && toA > ann.from) {
+                      if (ann.from !== undefined && ann.to !== undefined && fromA < ann.to && toA > ann.from) {
                         schedulePendingDismiss(ann.id)
                       }
                     }
@@ -806,7 +811,7 @@ export function MarkdownEditor(): JSX.Element {
     const trackedById = new Map(view.state.field(rawAnnotationsField).map(a => [a.id, a]))
     const toDispatch = reanchored.map(a => {
       const tracked = trackedById.get(a.id)
-      return (tracked && tracked.from >= 0 && tracked.to <= docLen) ? tracked : a
+      return (tracked && tracked.from !== undefined && tracked.from >= 0 && tracked.to !== undefined && tracked.to <= docLen) ? tracked : a
     })
     view.dispatch({
       effects: setAnnotationsEffect.of(toDispatch),

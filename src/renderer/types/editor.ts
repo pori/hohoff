@@ -34,21 +34,21 @@ export interface ChatSession {
   messages: ChatMessage[]
 }
 
-export type AnnotationType = 'passive_voice' | 'consistency' | 'style' | 'show_tell' | 'critique' | 'custom' | 'user_comment'
+export type AnnotationType = 'passive_voice' | 'consistency' | 'style' | 'show_tell' | 'critique' | 'custom' | 'user_comment' | 'document_note'
 
 export interface TextAnnotation {
   id: string
   type: AnnotationType
-  from: number
-  to: number
-  matchedText: string
+  from?: number        // undefined for document_note (not anchored to text)
+  to?: number          // undefined for document_note
+  matchedText?: string // undefined for document_note
   message: string
   suggestion?: string
   applied?: boolean // true when the suggestion has been applied to the document
   dismissed?: boolean // true when the user dismissed this annotation (archived)
   autoAnalyse?: boolean // true when created via context menu — FeedbackCard starts AI analysis immediately
   analysisCache?: { text: string; suggestion: string | null } // persisted AI analysis result
-  comment?: string // user-written note text (only set for user_comment type)
+  comment?: string // user-written note text (only set for user_comment and document_note types)
 }
 
 export type AnalysisMode = 'none' | 'passive_voice' | 'consistency' | 'style' | 'show_tell' | 'critique'

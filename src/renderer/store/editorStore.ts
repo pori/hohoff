@@ -44,6 +44,7 @@ interface EditorState {
   clearArchivedAnnotations: () => void
   removeArchivedAnnotation: (id: string) => void
   setAnnotationAnalysis: (id: string, result: { text: string; suggestion: string | null }) => void
+  addDocumentNote: (note: string) => void
 
   // Analysis mode
   analysisMode: AnalysisMode
@@ -516,6 +517,36 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           [s.activeFilePath]: { ...fileState, annotations: updatedAll }
         }
       }
+    })
+    scheduleSave(() => {
+      const st = get()
+      return {
+        activeFilePath: st.activeFilePath,
+        scrollPositions: st.scrollPositions,
+        chatSessionsByFile: st.chatSessionsByFile,
+        activeSessionIdByFile: st.activeSessionIdByFile,
+        annotationsByFile: st.annotationsByFile
+      }
+    })
+  },
+
+  addDocumentNote: (note) => {
+    const ann: import('../types/editor').TextAnnotation = {
+      id: `doc-note-${Date.now()}`,
+      type: 'document_note',
+      message: note,
+      comment: note,
+    }
+    set((s) => {
+      const annotations = [...s.annotations, ann]
+      const existingAll = s.activeFilePath
+        ? (s.annotationsByFile[s.activeFilePath]?.annotations ?? [])
+        : []
+      const merged = [...existingAll, ann]
+      const annotationsByFile = s.activeFilePath
+        ? { ...s.annotationsByFile, [s.activeFilePath]: { mode: s.analysisMode, annotations: merged } }
+        : s.annotationsByFile
+      return { annotations, annotationsByFile }
     })
     scheduleSave(() => {
       const st = get()
