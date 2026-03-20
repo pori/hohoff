@@ -14,7 +14,7 @@ export default function App(): JSX.Element {
   const {
     setFileTree, activeFilePath, isDirty, markSaved, activeFileContent, theme, toggleTheme,
     loadSession, revisionPanelOpen, toggleRevisionPanel, fontSize, setFontSize,
-    openProjectSearch, clearActiveFile
+    openProjectSearch, clearActiveFile, initPrefs
   } = useEditorStore()
   const [sidebarOpen, setSidebarOpen] = useState(
     () => localStorage.getItem('sidebarOpen') !== 'false'
@@ -32,10 +32,10 @@ export default function App(): JSX.Element {
     window.api.listFiles().then(setFileTree)
   }
 
-  // Load file tree, apply persisted theme, restore session, and detect first run
+  // Load file tree, restore prefs + session, and detect first run
   useEffect(() => {
     window.api.listFiles().then(setFileTree)
-    document.documentElement.classList.toggle('light', theme === 'light')
+    initPrefs()
     loadSession()
     window.api.readConfig().then((cfg) => {
       if (!cfg.apiKey || !cfg.projectPath) {

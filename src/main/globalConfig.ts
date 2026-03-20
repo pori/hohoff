@@ -5,6 +5,8 @@ import { readFileSync, writeFileSync, mkdirSync } from 'fs'
 export interface GlobalConfig {
   apiKey?: string
   projectPath?: string
+  fontSize?: number
+  theme?: 'dark' | 'light'
 }
 
 const CONFIG_DIR = join(homedir(), '.hohoff')

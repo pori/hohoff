@@ -71,6 +71,7 @@ interface EditorState {
   // Theme
   theme: 'dark' | 'light'
   toggleTheme: () => void
+  initPrefs: () => Promise<void>
 
   // Revision panel
   revisionPanelOpen: boolean
@@ -604,21 +605,28 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   revisions: [],
   setRevisions: (revisions) => set({ revisions }),
 
-  fontSize: Number(localStorage.getItem('editorFontSize')) || 15,
+  fontSize: 15,
   setFontSize: (size) => {
     const clamped = Math.max(11, Math.min(24, size))
-    localStorage.setItem('editorFontSize', String(clamped))
+    window.api.writeConfig({ fontSize: clamped })
     set({ fontSize: clamped })
   },
 
-  theme: (localStorage.getItem('editorTheme') as 'dark' | 'light') || 'dark',
+  theme: 'dark',
   toggleTheme: () => {
     set((s) => {
       const next = s.theme === 'dark' ? 'light' : 'dark'
-      localStorage.setItem('editorTheme', next)
+      window.api.writeConfig({ theme: next })
       document.documentElement.classList.toggle('light', next === 'light')
       return { theme: next }
     })
+  },
+  initPrefs: async () => {
+    const cfg = await window.api.readConfig()
+    const fontSize = Math.max(11, Math.min(24, cfg.fontSize ?? 15))
+    const theme = cfg.theme ?? 'dark'
+    document.documentElement.classList.toggle('light', theme === 'light')
+    set({ fontSize, theme })
   },
 
   projectSearchOpen: false,
