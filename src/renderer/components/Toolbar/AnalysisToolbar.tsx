@@ -43,6 +43,16 @@ function formatWordCount(n: number): string {
   return String(n)
 }
 
+function computeAvgSentenceLength(text: string): number | null {
+  const sentences = text
+    .split(/[.!?]+/)
+    .map(s => s.trim())
+    .filter(s => s.length > 0)
+  if (sentences.length === 0) return null
+  const totalWords = sentences.reduce((sum, s) => sum + countWords(s), 0)
+  return Math.round((totalWords / sentences.length) * 10) / 10
+}
+
 export function AnalysisToolbar(): JSX.Element {
   const {
     activeFilePath,
@@ -219,6 +229,7 @@ export function AnalysisToolbar(): JSX.Element {
   const totalCount = passiveCount + consistencyCount + styleCount + showTellCount + critiqueCount
   const anyActive = Boolean(analysisMode)
   const docWordCount = countWords(activeFileContent)
+  const avgSentenceLen = activeFileContent ? computeAvgSentenceLength(activeFileContent) : null
 
   return (
     <div className="toolbar">
@@ -373,11 +384,17 @@ export function AnalysisToolbar(): JSX.Element {
         {activeFilePath && (
           <span
             className="toolbar-wordcount"
-            title={`This document: ${docWordCount.toLocaleString()} words · Entire project: ${projectWordCount.toLocaleString()} words`}
+            title={`This document: ${docWordCount.toLocaleString()} words · Entire project: ${projectWordCount.toLocaleString()} words${avgSentenceLen !== null ? ` · Avg sentence: ${avgSentenceLen} words` : ''}`}
           >
             {formatWordCount(docWordCount)}
             <span className="toolbar-wordcount-sep">/</span>
             {formatWordCount(projectWordCount)}
+            {avgSentenceLen !== null && (
+              <>
+                <span className="toolbar-wordcount-sep">·</span>
+                {avgSentenceLen}w
+              </>
+            )}
           </span>
         )}
         {isDirty && (
