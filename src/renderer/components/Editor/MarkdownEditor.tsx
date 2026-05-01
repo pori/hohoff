@@ -424,23 +424,27 @@ const hrPlugin = ViewPlugin.fromClass(
   { decorations: v => v.decorations }
 )
 
-function buildTheme(fontSize: number, dark: boolean): ReturnType<typeof EditorView.theme> {
+function buildTheme(fontSize: number, dark: boolean, focusMode = false): ReturnType<typeof EditorView.theme> {
+  const displaySize = focusMode ? Math.max(fontSize + 3, 18) : fontSize
+  const maxWidth = focusMode ? '92vw' : '740px'
+  const padding = focusMode ? '40px 4vw' : '16px 20px'
+  const lineHeight = focusMode ? '1.9' : '1.8'
   return EditorView.theme(
   {
     '&': {
       height: '100%',
-      fontSize: `${fontSize}px`,
+      fontSize: `${displaySize}px`,
       backgroundColor: 'transparent',
       color: 'var(--text-primary)'
     },
     '.cm-scroller': {
       fontFamily: 'var(--font-serif)',
-      lineHeight: '1.8',
+      lineHeight,
       overflow: 'auto'
     },
     '.cm-content': {
-      padding: '16px 20px',
-      maxWidth: '740px',
+      padding,
+      maxWidth,
       margin: '0 auto',
       caretColor: 'var(--accent)'
     },
@@ -619,7 +623,7 @@ export function MarkdownEditor(): JSX.Element {
   const [hasSelection, setHasSelection] = useState(false)
   const [pendingComment, setPendingComment] = useState<{ from: number; to: number; text: string } | null>(null)
   const [commentDraft, setCommentDraft] = useState('')
-  const { activeFilePath, activeFileContent, setContent, annotations, fontSize, theme, scrollPositions, pendingScrollToLine, clearPendingScrollToLine } = useEditorStore()
+  const { activeFilePath, activeFileContent, setContent, annotations, fontSize, theme, focusMode, scrollPositions, pendingScrollToLine, clearPendingScrollToLine } = useEditorStore()
 
   function saveComment(): void {
     if (!pendingComment || !commentDraft.trim()) return
@@ -679,7 +683,7 @@ export function MarkdownEditor(): JSX.Element {
           annotationHoverTooltip,
           annotationHistory,
           hrPlugin,
-          themeCompartment.of(buildTheme(fontSize, theme === 'dark')),
+          themeCompartment.of(buildTheme(fontSize, theme === 'dark', focusMode)),
           EditorView.lineWrapping,
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {
@@ -832,12 +836,12 @@ export function MarkdownEditor(): JSX.Element {
     clearPendingScrollToLine()
   }, [pendingScrollToLine])
 
-  // Reconfigure theme when font size or colour theme changes
+  // Reconfigure theme when font size, colour theme, or focus mode changes
   useEffect(() => {
     const view = viewRef.current
     if (!view) return
-    view.dispatch({ effects: themeCompartment.reconfigure(buildTheme(fontSize, theme === 'dark')) })
-  }, [fontSize, theme])
+    view.dispatch({ effects: themeCompartment.reconfigure(buildTheme(fontSize, theme === 'dark', focusMode)) })
+  }, [fontSize, theme, focusMode])
 
   useEffect(() => {
     return window.api.onMenuAction((action) => {

@@ -83,6 +83,10 @@ interface EditorState {
   rightPanelTab: 'chat' | 'feedback'
   setRightPanelTab: (tab: 'chat' | 'feedback') => void
 
+  // Focus / distraction-free mode
+  focusMode: boolean
+  toggleFocusMode: () => void
+
   // Document outline panel
   outlineOpen: boolean
   toggleOutline: () => void
@@ -594,6 +598,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   rightPanelTab: 'chat',
   setRightPanelTab: (tab) => set({ rightPanelTab: tab }),
+
+  focusMode: localStorage.getItem('focusMode') === 'true',
+  toggleFocusMode: () => set((s) => {
+    const next = !s.focusMode
+    localStorage.setItem('focusMode', String(next))
+    return { focusMode: next }
+  }),
 
   outlineOpen: localStorage.getItem('outlineOpen') === 'true',
   toggleOutline: () => set((s) => {

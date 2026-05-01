@@ -113,6 +113,12 @@ function buildAppMenu(win: BrowserWindow): void {
       label: 'View',
       submenu: [
         {
+          label: 'Focus Mode',
+          accelerator: 'CmdOrCtrl+Shift+G',
+          click: () => send(win, 'toggleFocusMode')
+        },
+        { type: 'separator' },
+        {
           label: 'Toggle File Tree',
           accelerator: 'CmdOrCtrl+Shift+1',
           click: () => send(win, 'toggleSidebar')

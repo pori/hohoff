@@ -14,7 +14,7 @@ export default function App(): JSX.Element {
   const {
     setFileTree, activeFilePath, isDirty, markSaved, activeFileContent, theme, toggleTheme,
     loadSession, revisionPanelOpen, toggleRevisionPanel, fontSize, setFontSize,
-    openProjectSearch, clearActiveFile, initPrefs
+    openProjectSearch, clearActiveFile, initPrefs, focusMode, toggleFocusMode
   } = useEditorStore()
   const [sidebarOpen, setSidebarOpen] = useState(
     () => localStorage.getItem('sidebarOpen') !== 'false'
@@ -72,6 +72,8 @@ export default function App(): JSX.Element {
         openProjectSearch()
       } else if (action === 'openSettings') {
         setSettingsOpen(true)
+      } else if (action === 'toggleFocusMode') {
+        toggleFocusMode()
       } else if (action === 'openProject') {
         const picked = await window.api.pickProjectFolder()
         if (picked) await switchProject(picked)
@@ -92,17 +94,23 @@ export default function App(): JSX.Element {
       } else if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'f') {
         e.preventDefault()
         openProjectSearch()
+      } else if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'g') {
+        e.preventDefault()
+        toggleFocusMode()
+      } else if (e.key === 'Escape' && focusMode) {
+        toggleFocusMode()
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [activeFilePath, isDirty, activeFileContent])
+  }, [activeFilePath, isDirty, activeFileContent, focusMode])
 
   return (
     <div
       className="app-layout"
       data-sidebar={sidebarOpen ? 'open' : 'closed'}
       data-chat={chatOpen ? 'open' : 'closed'}
+      data-focus={focusMode ? 'on' : 'off'}
     >
       <div className="app-titlebar">
         <span className="app-titlebar-title">Hohoff Editor</span>
@@ -121,6 +129,11 @@ export default function App(): JSX.Element {
             />
           </div>
           <div className="app-titlebar-icon-group">
+            <button
+              className={`app-titlebar-theme-btn${focusMode ? ' active' : ''}`}
+              onClick={toggleFocusMode}
+              title="Focus mode (⌘⇧G)"
+            >⊡</button>
             <button
               className="app-titlebar-theme-btn"
               onClick={toggleTheme}
@@ -145,6 +158,9 @@ export default function App(): JSX.Element {
       <aside className="chat-area">
         <ChatPanel />
       </aside>
+      {focusMode && (
+        <button className="focus-exit-btn" onClick={toggleFocusMode} title="Exit focus mode (Esc)">✕</button>
+      )}
       <ProjectSearchModal />
       {settingsOpen && (
         <SettingsDialog
