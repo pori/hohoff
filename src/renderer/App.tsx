@@ -24,6 +24,17 @@ export default function App(): JSX.Element {
   )
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [isFirstRun, setIsFirstRun] = useState(false)
+  const [focusPeek, setFocusPeek] = useState(false)
+
+  useEffect(() => {
+    if (!focusMode) {
+      setFocusPeek(false)
+      return
+    }
+    const onMove = (e: MouseEvent): void => setFocusPeek(e.clientY < 85)
+    window.addEventListener('mousemove', onMove)
+    return () => window.removeEventListener('mousemove', onMove)
+  }, [focusMode])
 
   const switchProject = async (newPath: string): Promise<void> => {
     await window.api.writeConfig({ projectPath: newPath })
@@ -111,6 +122,7 @@ export default function App(): JSX.Element {
       data-sidebar={sidebarOpen ? 'open' : 'closed'}
       data-chat={chatOpen ? 'open' : 'closed'}
       data-focus={focusMode ? 'on' : 'off'}
+      data-peek={focusPeek ? 'on' : 'off'}
     >
       <div className="app-titlebar">
         <span className="app-titlebar-title">Hohoff Editor</span>

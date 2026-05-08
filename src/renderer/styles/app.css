@@ -14,12 +14,33 @@
 }
 
 .app-layout[data-focus='on'] .app-titlebar {
-  overflow: hidden;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 38px;
+  overflow: visible;
   border: none;
+  border-bottom: 1px solid var(--border);
+  z-index: 200;
+  transform: translateY(-100%);
+  transition: transform 0.2s ease;
 }
 
 .app-layout[data-focus='on'] .toolbar {
-  display: none;
+  display: flex;
+  position: fixed;
+  top: 38px;
+  left: 0;
+  right: 0;
+  z-index: 199;
+  transform: translateY(-100%);
+  transition: transform 0.2s ease;
+}
+
+.app-layout[data-focus='on'][data-peek='on'] .app-titlebar,
+.app-layout[data-focus='on'][data-peek='on'] .toolbar {
+  transform: translateY(0);
 }
 
 .focus-exit-btn {
