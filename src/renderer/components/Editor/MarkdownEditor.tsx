@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { EditorView, Decoration, type DecorationSet, hoverTooltip, keymap, ViewPlugin, WidgetType, type ViewUpdate } from '@codemirror/view'
 import { EditorState, EditorSelection, StateField, StateEffect, Annotation, RangeSetBuilder, Compartment, Transaction } from '@codemirror/state'
 import { markdown } from '@codemirror/lang-markdown'
-import { syntaxHighlighting, defaultHighlightStyle, syntaxTree, indentUnit } from '@codemirror/language'
+import { syntaxHighlighting, HighlightStyle, syntaxTree, indentUnit } from '@codemirror/language'
+import { tags } from '@lezer/highlight'
 import { history, defaultKeymap, historyKeymap, invertedEffects, selectAll, indentLess } from '@codemirror/commands'
 import { search, searchKeymap, openSearchPanel } from '@codemirror/search'
 import { marked } from 'marked'
@@ -389,6 +390,19 @@ const annotationHistory = invertedEffects.of(tr => {
 
 const themeCompartment = new Compartment()
 
+const markdownHighlight = HighlightStyle.define([
+  { tag: tags.heading1, fontSize: '1.4em', fontWeight: '700', color: 'var(--heading-color)' },
+  { tag: tags.heading2, fontSize: '1.2em', fontWeight: '700', color: 'var(--heading-color)' },
+  { tag: tags.heading,  fontWeight: '700', color: 'var(--heading-color)' },
+  { tag: tags.emphasis, fontStyle: 'italic' },
+  { tag: tags.strong,   fontWeight: 'bold' },
+  { tag: tags.strikethrough, textDecoration: 'line-through' },
+  { tag: tags.link, textDecoration: 'underline' },
+  { tag: tags.url, color: 'var(--accent)' },
+  { tag: tags.processingInstruction, color: 'var(--text-muted)' },
+  { tag: tags.comment, fontStyle: 'italic', color: 'var(--text-muted)' },
+])
+
 // Horizontal rule widget — replaces `---` lines with a visual scene-break line
 class HrWidget extends WidgetType {
   toDOM(): HTMLElement {
@@ -456,12 +470,6 @@ function buildTheme(fontSize: number, dark: boolean, focusMode = false): ReturnT
     '.cm-activeLine': { backgroundColor: 'transparent' },
     '.cm-activeLineGutter': { backgroundColor: 'transparent' },
 
-    // Markdown heading styles
-    '.tok-heading': { fontWeight: '700', color: 'var(--heading-color)' },
-    '.tok-heading1': { fontSize: '1.4em' },
-    '.tok-heading2': { fontSize: '1.2em' },
-    '.tok-emphasis': { fontStyle: 'italic' },
-    '.tok-strong': { fontWeight: '700' },
     '.cm-hr-widget': {
       display: 'inline-block',
       width: '100%',
@@ -677,7 +685,7 @@ export function MarkdownEditor(): JSX.Element {
             ...historyKeymap
           ]),
           markdown({ extensions: [{ remove: ['SetextHeading'] }] }),
-          syntaxHighlighting(defaultHighlightStyle),
+          syntaxHighlighting(markdownHighlight),
           rawAnnotationsField,
           annotationField,
           annotationHoverTooltip,
