@@ -391,8 +391,6 @@ const annotationHistory = invertedEffects.of(tr => {
 const themeCompartment = new Compartment()
 
 const markdownHighlight = HighlightStyle.define([
-  { tag: tags.heading1, fontSize: '1.4em', fontWeight: '700', color: 'var(--heading-color)' },
-  { tag: tags.heading2, fontSize: '1.2em', fontWeight: '700', color: 'var(--heading-color)' },
   { tag: tags.heading,  fontWeight: '700', color: 'var(--heading-color)' },
   { tag: tags.emphasis, fontStyle: 'italic' },
   { tag: tags.strong,   fontWeight: 'bold' },
