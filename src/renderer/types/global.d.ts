@@ -37,6 +37,7 @@ declare global {
       readConfig: () => Promise<GlobalConfig>
       writeConfig: (updates: Partial<GlobalConfig>) => Promise<void>
       pickProjectFolder: () => Promise<string | null>
+      exportPDF: (content: string, fileName: string) => Promise<void>
     }
   }
 }

@@ -1,6 +1,7 @@
 import { ipcMain, dialog, BrowserWindow } from 'electron'
-import { readFileSync } from 'fs'
-import { extname, basename } from 'path'
+import { readFileSync, writeFileSync, unlinkSync } from 'fs'
+import { extname, basename, join } from 'path'
+import { tmpdir } from 'os'
 import { listDraftFiles, readMarkdownFile, writeMarkdownFile, getProjectWordCount, saveOrderFile, readSession, writeSession, saveRevision, listRevisions, loadRevision, deleteRevision, renameFileOrDir, deleteFileOrDir, createMarkdownFile, createSubdirectory, moveFileOrDir, readStoryBibleFile, openStoryBibleFile, writeStoryBibleFile, searchAcrossFiles, replaceInFiles } from './fileSystem'
 import type { SearchOptions } from './fileSystem'
 import { streamMessage, resetClient } from './aiService'
@@ -180,5 +181,98 @@ export function registerIpcHandlers(): void {
     const win = BrowserWindow.fromWebContents(event.sender)
     const result = await dialog.showOpenDialog(win!, { properties: ['openDirectory'] })
     return result.canceled ? null : result.filePaths[0]
+  })
+
+  ipcMain.handle('export:pdf', async (event, content: string, fileName: string): Promise<void> => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    const result = await dialog.showSaveDialog(win!, {
+      defaultPath: `${fileName}.pdf`,
+      filters: [{ name: 'PDF', extensions: ['pdf'] }]
+    })
+    if (result.canceled || !result.filePath) return
+
+    const { marked } = await import('marked')
+    // Draft files use single \n between paragraphs; marked needs \n\n to create <p> elements
+    const normalized = content.replace(/\r\n/g, '\n').replace(/\n(?!\n)/g, '\n\n')
+    const bodyHtml = await marked(normalized)
+
+    // Escape for safe injection into HTML attributes
+    const safeTitle = fileName.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')
+    const headerTitle = fileName.toUpperCase().replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>${safeTitle}</title>
+<style>
+  @page { size: letter; margin: 1in; }
+  body {
+    font-family: "Courier New", Courier, monospace;
+    font-size: 12pt;
+    line-height: 2;
+    color: #000;
+    margin: 0;
+    padding: 0;
+  }
+  h1, h2, h3 {
+    font-weight: normal;
+    font-size: 12pt;
+    text-align: center;
+    text-transform: uppercase;
+    margin: 0;
+    line-height: 2;
+  }
+  p {
+    margin: 0;
+    text-indent: 0.5in;
+    text-align: left;
+  }
+  h1 + p, h2 + p, h3 + p, hr + p { text-indent: 0; }
+  hr {
+    border: none;
+    margin: 0;
+    line-height: 2;
+    height: 2em;
+    text-align: center;
+  }
+  hr::after {
+    content: "#";
+    display: block;
+    text-align: center;
+    line-height: 2;
+  }
+  em { font-style: italic; }
+  strong { font-weight: bold; }
+  blockquote { margin: 0 0 0 0.5in; }
+  ul, ol { margin: 0 0 0 0.5in; }
+  li { margin: 0; }
+</style>
+</head>
+<body>${bodyHtml}</body>
+</html>`
+
+    const tempPath = join(tmpdir(), `hohoff-export-${Date.now()}.html`)
+    writeFileSync(tempPath, html, 'utf-8')
+
+    const offscreen = new BrowserWindow({
+      show: false,
+      webPreferences: { sandbox: false, contextIsolation: true }
+    })
+
+    try {
+      await offscreen.loadFile(tempPath)
+      const pdfBuffer = await offscreen.webContents.printToPDF({
+        pageSize: 'Letter',
+        displayHeaderFooter: true,
+        headerTemplate: `<div style="font-size:11pt;font-family:'Courier New',Courier,monospace;width:100%;text-align:right;padding-right:72pt;">${headerTitle} / <span class="pageNumber"></span></div>`,
+        footerTemplate: '<div></div>',
+        margins: { marginType: 'custom', top: 1.25, bottom: 1.0, left: 1.0, right: 1.0 }
+      })
+      writeFileSync(result.filePath, pdfBuffer)
+    } finally {
+      offscreen.destroy()
+      try { unlinkSync(tempPath) } catch { /* ignore */ }
+    }
   })
 }

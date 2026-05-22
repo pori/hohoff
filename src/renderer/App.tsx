@@ -88,6 +88,11 @@ export default function App(): JSX.Element {
       } else if (action === 'openProject') {
         const picked = await window.api.pickProjectFolder()
         if (picked) await switchProject(picked)
+      } else if (action === 'exportPDF') {
+        if (activeFilePath && activeFileContent) {
+          const fileName = activeFilePath.split('/').pop()?.replace(/\.md$/, '') ?? 'document'
+          await window.api.exportPDF(activeFileContent, fileName)
+        }
       }
     })
   }, [activeFilePath, isDirty, activeFileContent, fontSize])

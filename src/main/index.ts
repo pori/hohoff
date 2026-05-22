@@ -64,6 +64,11 @@ function buildAppMenu(win: BrowserWindow): void {
           accelerator: 'CmdOrCtrl+S',
           click: () => send(win, 'save')
         },
+        {
+          label: 'Export as PDF…',
+          accelerator: 'CmdOrCtrl+Shift+E',
+          click: () => send(win, 'exportPDF')
+        },
         { type: 'separator' },
         {
           label: 'Open Draft Folder in Finder',

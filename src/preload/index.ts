@@ -118,4 +118,7 @@ contextBridge.exposeInMainWorld('api', {
 
   pickProjectFolder: (): Promise<string | null> =>
     ipcRenderer.invoke('config:pickFolder'),
+
+  exportPDF: (content: string, fileName: string): Promise<void> =>
+    ipcRenderer.invoke('export:pdf', content, fileName),
 })
