@@ -93,6 +93,8 @@ export default function App(): JSX.Element {
           const fileName = activeFilePath.split('/').pop()?.replace(/\.md$/, '') ?? 'document'
           await window.api.exportPDF(activeFileContent, fileName)
         }
+      } else if (action === 'exportProjectPDF') {
+        await window.api.exportProjectPDF()
       }
     })
   }, [activeFilePath, isDirty, activeFileContent, fontSize])

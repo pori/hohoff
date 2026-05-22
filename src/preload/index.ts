@@ -121,4 +121,7 @@ contextBridge.exposeInMainWorld('api', {
 
   exportPDF: (content: string, fileName: string): Promise<void> =>
     ipcRenderer.invoke('export:pdf', content, fileName),
+
+  exportProjectPDF: (): Promise<void> =>
+    ipcRenderer.invoke('export:projectPdf'),
 })

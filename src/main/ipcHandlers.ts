@@ -2,11 +2,11 @@ import { ipcMain, dialog, BrowserWindow } from 'electron'
 import { readFileSync, writeFileSync, unlinkSync } from 'fs'
 import { extname, basename, join } from 'path'
 import { tmpdir } from 'os'
-import { listDraftFiles, readMarkdownFile, writeMarkdownFile, getProjectWordCount, saveOrderFile, readSession, writeSession, saveRevision, listRevisions, loadRevision, deleteRevision, renameFileOrDir, deleteFileOrDir, createMarkdownFile, createSubdirectory, moveFileOrDir, readStoryBibleFile, openStoryBibleFile, writeStoryBibleFile, searchAcrossFiles, replaceInFiles } from './fileSystem'
+import { listDraftFiles, readMarkdownFile, writeMarkdownFile, getProjectWordCount, saveOrderFile, readSession, writeSession, saveRevision, listRevisions, loadRevision, deleteRevision, renameFileOrDir, deleteFileOrDir, createMarkdownFile, createSubdirectory, moveFileOrDir, readStoryBibleFile, openStoryBibleFile, writeStoryBibleFile, searchAcrossFiles, replaceInFiles, readAllDraftFiles } from './fileSystem'
 import type { SearchOptions } from './fileSystem'
 import { streamMessage, resetClient } from './aiService'
 import type { AIPayload, Attachment } from '../renderer/types/editor'
-import { readGlobalConfig, writeGlobalConfig } from './globalConfig'
+import { readGlobalConfig, writeGlobalConfig, getDraftRoot } from './globalConfig'
 import type { GlobalConfig } from './globalConfig'
 
 export function registerIpcHandlers(): void {
@@ -260,6 +260,94 @@ export function registerIpcHandlers(): void {
       webPreferences: { sandbox: false, contextIsolation: true }
     })
 
+    try {
+      await offscreen.loadFile(tempPath)
+      const pdfBuffer = await offscreen.webContents.printToPDF({
+        pageSize: 'Letter',
+        displayHeaderFooter: true,
+        headerTemplate: `<div style="font-size:11pt;font-family:'Courier New',Courier,monospace;width:100%;text-align:right;padding-right:72pt;">${headerTitle} / <span class="pageNumber"></span></div>`,
+        footerTemplate: '<div></div>',
+        margins: { marginType: 'custom', top: 1.25, bottom: 1.0, left: 1.0, right: 1.0 }
+      })
+      writeFileSync(result.filePath, pdfBuffer)
+    } finally {
+      offscreen.destroy()
+      try { unlinkSync(tempPath) } catch { /* ignore */ }
+    }
+  })
+
+  ipcMain.handle('export:projectPdf', async (event): Promise<void> => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    const projectName = basename(getDraftRoot())
+
+    const result = await dialog.showSaveDialog(win!, {
+      defaultPath: `${projectName}.pdf`,
+      filters: [{ name: 'PDF', extensions: ['pdf'] }]
+    })
+    if (result.canceled || !result.filePath) return
+
+    const docs = await readAllDraftFiles()
+    if (docs.length === 0) return
+
+    const { marked } = await import('marked')
+    const normalize = (s: string) => s.replace(/\r\n/g, '\n').replace(/\n(?!\n)/g, '\n\n')
+
+    let bodyHtml = ''
+    let currentPart: string | null = null
+    let needsPageBreak = false
+
+    for (const doc of docs) {
+      const slashIdx = doc.relativePath.indexOf('/')
+      const partName = slashIdx !== -1 ? doc.relativePath.slice(0, slashIdx) : null
+
+      if (partName !== null && partName !== currentPart) {
+        currentPart = partName
+        const safe = partName.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        bodyHtml += `<div class="page-break part-page"><div class="part-title">${safe}</div></div>`
+        needsPageBreak = false
+      }
+
+      const contentHtml = await marked(normalize(doc.content))
+      const cls = needsPageBreak ? 'page-break chapter' : 'chapter'
+      bodyHtml += `<div class="${cls}">${contentHtml}</div>`
+      needsPageBreak = true
+    }
+
+    const safeTitle = projectName.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')
+    const headerTitle = projectName.toUpperCase().replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>${safeTitle}</title>
+<style>
+  @page { size: letter; margin: 1in; }
+  body { font-family: "Courier New", Courier, monospace; font-size: 12pt; line-height: 2; color: #000; margin: 0; padding: 0; }
+  h1, h2, h3 { font-weight: normal; font-size: 12pt; text-align: center; text-transform: uppercase; margin: 0; line-height: 2; }
+  p { margin: 0; text-indent: 0.5in; text-align: left; }
+  h1 + p, h2 + p, h3 + p, hr + p, .chapter > p:first-child { text-indent: 0; }
+  hr { border: none; margin: 0; height: 2em; text-align: center; }
+  hr::after { content: "#"; display: block; text-align: center; line-height: 2; }
+  em { font-style: italic; }
+  strong { font-weight: bold; }
+  blockquote { margin: 0 0 0 0.5in; }
+  ul, ol { margin: 0 0 0 0.5in; }
+  li { margin: 0; }
+  .page-break { page-break-before: always; }
+  .chapter { padding-top: 2.5in; }
+  .chapter:first-child { padding-top: 0; }
+  .part-page { padding-top: 3.5in; text-align: center; }
+  .part-title { font-family: "Courier New", Courier, monospace; font-size: 12pt; text-transform: uppercase; }
+</style>
+</head>
+<body>${bodyHtml}</body>
+</html>`
+
+    const tempPath = join(tmpdir(), `hohoff-project-export-${Date.now()}.html`)
+    writeFileSync(tempPath, html, 'utf-8')
+
+    const offscreen = new BrowserWindow({ show: false, webPreferences: { sandbox: false, contextIsolation: true } })
     try {
       await offscreen.loadFile(tempPath)
       const pdfBuffer = await offscreen.webContents.printToPDF({
