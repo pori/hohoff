@@ -622,6 +622,10 @@ function insertLink(view: EditorView): boolean {
   return true
 }
 
+function countWords(text: string): number {
+  return text.trim() === '' ? 0 : text.trim().split(/\s+/).length
+}
+
 export function MarkdownEditor(): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
@@ -629,6 +633,8 @@ export function MarkdownEditor(): JSX.Element {
   const [hasSelection, setHasSelection] = useState(false)
   const [pendingComment, setPendingComment] = useState<{ from: number; to: number; text: string } | null>(null)
   const [commentDraft, setCommentDraft] = useState('')
+  const [wordStats, setWordStats] = useState<{ atCursor: number; total: number }>({ atCursor: 0, total: 0 })
+  const wordTotalRef = useRef(0)
   const { activeFilePath, activeFileContent, setContent, annotations, fontSize, theme, focusMode, scrollPositions, pendingScrollToLine, clearPendingScrollToLine } = useEditorStore()
 
   function saveComment(): void {
@@ -694,6 +700,12 @@ export function MarkdownEditor(): JSX.Element {
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {
               setContent(update.state.doc.toString())
+              wordTotalRef.current = countWords(update.state.doc.toString())
+            }
+            if (update.selectionSet || update.docChanged) {
+              const head = update.state.selection.main.head
+              const atCursor = countWords(update.state.doc.sliceString(0, head))
+              setWordStats({ atCursor, total: wordTotalRef.current })
             }
             if (update.selectionSet) {
               const { from, to } = update.state.selection.main
@@ -1006,6 +1018,11 @@ export function MarkdownEditor(): JSX.Element {
               <button className="comment-modal-save" onClick={saveComment} disabled={!commentDraft.trim()}>Save</button>
             </div>
           </div>
+        </div>
+      )}
+      {activeFilePath && (
+        <div className="editor-statusbar">
+          word {wordStats.atCursor.toLocaleString()} of {wordStats.total.toLocaleString()}
         </div>
       )}
     </div>

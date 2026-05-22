@@ -4,10 +4,27 @@
   min-width: 0;
   height: 100%;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .codemirror-host {
-  height: 100%;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.editor-statusbar {
+  flex-shrink: 0;
+  padding: 3px 14px;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: right;
+  opacity: 0.55;
+  border-top: 1px solid var(--border);
+  user-select: none;
+  pointer-events: none;
 }
 
 .codemirror-host .cm-editor {
