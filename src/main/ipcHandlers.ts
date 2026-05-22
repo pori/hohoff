@@ -307,9 +307,11 @@ export function registerIpcHandlers(): void {
         needsPageBreak = false
       }
 
+      const chapterTitle = doc.relativePath.split('/').pop() ?? doc.relativePath
+      const safeChapterTitle = chapterTitle.replace(/&/g, '&amp;').replace(/</g, '&lt;')
       const contentHtml = await marked(normalize(doc.content))
       const cls = needsPageBreak ? 'page-break chapter' : 'chapter'
-      bodyHtml += `<div class="${cls}">${contentHtml}</div>`
+      bodyHtml += `<div class="${cls}"><h2>${safeChapterTitle}</h2>${contentHtml}</div>`
       needsPageBreak = true
     }
 
