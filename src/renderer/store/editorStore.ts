@@ -63,6 +63,8 @@ interface EditorState {
   // Word counts
   projectWordCount: number
   setProjectWordCount: (count: number) => void
+  selectionWordCount: number | null
+  setSelectionWordCount: (count: number | null) => void
 
   // Editor font size
   fontSize: number
@@ -592,6 +594,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   projectWordCount: 0,
   setProjectWordCount: (projectWordCount) => set({ projectWordCount }),
+
+  selectionWordCount: null as number | null,
+  setSelectionWordCount: (count: number | null) => set({ selectionWordCount: count }),
 
   revisionPanelOpen: false,
   toggleRevisionPanel: () => set((s) => ({ revisionPanelOpen: !s.revisionPanelOpen })),

@@ -697,7 +697,15 @@ export function MarkdownEditor(): JSX.Element {
             }
             if (update.selectionSet) {
               const { from, to } = update.state.selection.main
-              setHasSelection(from !== to)
+              const hasNonEmpty = from !== to
+              setHasSelection(hasNonEmpty)
+              if (hasNonEmpty) {
+                const sel = update.state.sliceDoc(from, to)
+                const words = sel.trim() === '' ? 0 : sel.trim().split(/\s+/).length
+                useEditorStore.getState().setSelectionWordCount(words)
+              } else {
+                useEditorStore.getState().setSelectionWordCount(null)
+              }
             }
             // When the user Cmd+Z's through an Apply, invertedEffects fires a
             // setAnnotationsEffect restoring the old list inside CM. Sync that

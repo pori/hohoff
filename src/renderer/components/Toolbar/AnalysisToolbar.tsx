@@ -79,7 +79,8 @@ export function AnalysisToolbar(): JSX.Element {
     outlineOpen,
     toggleOutline,
     revisionPanelOpen,
-    toggleRevisionPanel
+    toggleRevisionPanel,
+    selectionWordCount
   } = useEditorStore()
 
   const [analyzeOpen, setAnalyzeOpen] = useState(false)
@@ -381,6 +382,11 @@ export function AnalysisToolbar(): JSX.Element {
             A+
           </button>
         </div>
+        {selectionWordCount !== null && (
+          <span className="toolbar-selection-wordcount" title={`${selectionWordCount} words selected`}>
+            {formatWordCount(selectionWordCount)} sel
+          </span>
+        )}
         {activeFilePath && (
           <span
             className="toolbar-wordcount"

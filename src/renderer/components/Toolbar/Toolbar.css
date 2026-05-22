@@ -142,6 +142,17 @@
   opacity: 0.5;
 }
 
+.toolbar-selection-wordcount {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-family: var(--font-sans);
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: default;
+  opacity: 0.6;
+  letter-spacing: 0.02em;
+}
+
 /* ── Outline toggle button ───────────────────────────────────────── */
 .toolbar-btn-outline {
   padding: 4px 8px;
