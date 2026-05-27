@@ -12,6 +12,11 @@ export function SettingsDialog({ onClose, onProjectChanged, isSetup }: Props): J
   const [projectPath, setProjectPath] = useState('')
   const [projectTitle, setProjectTitle] = useState('')
   const [originalPath, setOriginalPath] = useState('')
+  const [authorName, setAuthorName] = useState('')
+  const [penName, setPenName] = useState('')
+  const [authorAddress, setAuthorAddress] = useState('')
+  const [authorEmail, setAuthorEmail] = useState('')
+  const [authorPhone, setAuthorPhone] = useState('')
   const [saved, setSaved] = useState(false)
   const overlayRef = useRef<HTMLDivElement>(null)
 
@@ -21,6 +26,11 @@ export function SettingsDialog({ onClose, onProjectChanged, isSetup }: Props): J
       setProjectPath(cfg.projectPath ?? '')
       setProjectTitle(cfg.projectTitle ?? '')
       setOriginalPath(cfg.projectPath ?? '')
+      setAuthorName(cfg.authorName ?? '')
+      setPenName(cfg.penName ?? '')
+      setAuthorAddress(cfg.authorAddress ?? '')
+      setAuthorEmail(cfg.authorEmail ?? '')
+      setAuthorPhone(cfg.authorPhone ?? '')
     })
   }, [])
 
@@ -43,7 +53,16 @@ export function SettingsDialog({ onClose, onProjectChanged, isSetup }: Props): J
   }
 
   const handleSave = async (): Promise<void> => {
-    await window.api.writeConfig({ apiKey: apiKey || undefined, projectPath: projectPath || undefined, projectTitle: projectTitle.trim() || undefined })
+    await window.api.writeConfig({
+      apiKey: apiKey || undefined,
+      projectPath: projectPath || undefined,
+      projectTitle: projectTitle.trim() || undefined,
+      authorName: authorName.trim() || undefined,
+      penName: penName.trim() || undefined,
+      authorAddress: authorAddress.trim() || undefined,
+      authorEmail: authorEmail.trim() || undefined,
+      authorPhone: authorPhone.trim() || undefined,
+    })
     if (projectPath !== originalPath) onProjectChanged?.()
     setOriginalPath(projectPath)
     setSaved(true)
@@ -108,6 +127,76 @@ export function SettingsDialog({ onClose, onProjectChanged, isSetup }: Props): J
               spellCheck={false}
             />
             <p className="settings-hint">Used for AI features. Changes take effect immediately.</p>
+          </div>
+
+          <div className="settings-section-divider"><span>Manuscript</span></div>
+
+          <div className="settings-field">
+            <label className="settings-label" htmlFor="settings-author-name">Author Name</label>
+            <input
+              id="settings-author-name"
+              className="settings-input"
+              type="text"
+              value={authorName}
+              onChange={(e) => setAuthorName(e.target.value)}
+              placeholder="Jane Smith"
+              spellCheck={false}
+            />
+            <p className="settings-hint">Legal name used on manuscript cover pages and PDF headers.</p>
+          </div>
+
+          <div className="settings-field">
+            <label className="settings-label" htmlFor="settings-pen-name">Pen Name / Byline</label>
+            <input
+              id="settings-pen-name"
+              className="settings-input"
+              type="text"
+              value={penName}
+              onChange={(e) => setPenName(e.target.value)}
+              placeholder="J. Smith"
+              spellCheck={false}
+            />
+            <p className="settings-hint">Name shown as author (e.g. "by…"). Defaults to Author Name if blank.</p>
+          </div>
+
+          <div className="settings-field">
+            <label className="settings-label" htmlFor="settings-author-address">Address</label>
+            <textarea
+              id="settings-author-address"
+              className="settings-textarea"
+              value={authorAddress}
+              onChange={(e) => setAuthorAddress(e.target.value)}
+              placeholder={"123 Example Street\nCity, Country"}
+              rows={3}
+              spellCheck={false}
+            />
+          </div>
+
+          <div className="settings-two-col">
+            <div className="settings-field">
+              <label className="settings-label" htmlFor="settings-author-email">Email</label>
+              <input
+                id="settings-author-email"
+                className="settings-input"
+                type="email"
+                value={authorEmail}
+                onChange={(e) => setAuthorEmail(e.target.value)}
+                placeholder="jane@example.com"
+                spellCheck={false}
+              />
+            </div>
+            <div className="settings-field">
+              <label className="settings-label" htmlFor="settings-author-phone">Phone</label>
+              <input
+                id="settings-author-phone"
+                className="settings-input"
+                type="tel"
+                value={authorPhone}
+                onChange={(e) => setAuthorPhone(e.target.value)}
+                placeholder="+1 555 000 0000"
+                spellCheck={false}
+              />
+            </div>
           </div>
         </div>
 

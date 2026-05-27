@@ -312,13 +312,89 @@ export function registerIpcHandlers(): void {
     const { marked } = await import('marked')
     const { PDFDocument, rgb, StandardFonts } = await import('pdf-lib')
     const normalize = (s: string) => s.replace(/\r\n/g, '\n').replace(/\n(?!\n)/g, '\n\n')
+    const esc = (s: string): string =>
+      s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
     const projectTitle = projectName.toUpperCase()
 
-    // Build an ordered list of sections: part-divider pages + individual chapters.
+    // ── Cover page ──────────────────────────────────────────────────────────────
+    const cfg = readGlobalConfig()
+    const authorLegal  = cfg.authorName?.trim()  ?? ''
+    const authorByline = cfg.penName?.trim()      || authorLegal
+    const authorAddr   = cfg.authorAddress?.trim() ?? ''
+    const authorEmail  = cfg.authorEmail?.trim()  ?? ''
+    const authorPhone  = cfg.authorPhone?.trim()  ?? ''
+
+    // Count words from docs already in memory, rounded to nearest 1,000
+    const totalWords = docs.reduce((sum, doc) => {
+      return sum + (doc.content.trim() === '' ? 0 : doc.content.trim().split(/\s+/).length)
+    }, 0)
+    const roundTo     = totalWords >= 5000 ? 1000 : 100
+    const rounded     = Math.round(totalWords / roundTo) * roundTo
+    const wordCountText = `~${rounded.toLocaleString('en-US')} words`
+
+    // Author contact block (skip empty lines)
+    const contactLines = [
+      authorLegal,
+      ...authorAddr.split('\n').map(l => l.trim()).filter(Boolean),
+      authorPhone,
+      authorEmail,
+    ].filter(Boolean)
+
+    const coverCSS = `
+      @page { size: letter; }
+      body {
+        font-family: "Courier New", Courier, monospace;
+        font-size: 12pt;
+        line-height: 1.5;
+        color: #000;
+        margin: 0;
+        padding: 0;
+      }
+      .cover-page {
+        display: flex;
+        flex-direction: column;
+        height: 9in;
+      }
+      .cover-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+      }
+      .cover-contact { line-height: 1.5; }
+      .cover-wordcount { text-align: right; line-height: 1.5; }
+      .cover-title-block {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        line-height: 2;
+      }
+      .cover-title { font-size: 12pt; text-transform: uppercase; margin: 0; }
+      .cover-by    { margin: 0; }
+      .cover-byline{ margin: 0; }
+    `
+    const coverBodyHtml = `
+      <div class="cover-page">
+        <div class="cover-top">
+          <div class="cover-contact">${contactLines.map(esc).join('<br>')}</div>
+          <div class="cover-wordcount">${esc(wordCountText)}</div>
+        </div>
+        <div class="cover-title-block">
+          <p class="cover-title">${esc(projectName)}</p>
+          ${authorByline ? `<p class="cover-by">by</p><p class="cover-byline">${esc(authorByline)}</p>` : ''}
+        </div>
+      </div>`
+
+    // Build an ordered list of sections: cover + part-divider pages + individual chapters.
     // Each section becomes its own PDF so its title can appear in the running header.
-    interface Section { title: string; bodyHtml: string }
-    const sections: Section[] = []
+    // isCover=true sections receive no running header (standard manuscript practice).
+    interface Section { title: string; bodyHtml: string; css?: string; isCover?: boolean }
+    const sections: Section[] = [
+      { title: '', bodyHtml: coverBodyHtml, css: coverCSS, isCover: true }
+    ]
     let currentPart: string | null = null
 
     for (const doc of docs) {
@@ -343,8 +419,7 @@ export function registerIpcHandlers(): void {
       })
     }
 
-    // CSS shared by every section — no page-break rules needed since each section
-    // is its own HTML document printed independently.
+    // CSS shared by chapter/part sections — cover page uses its own CSS (set above).
     const pageCSS = `
       @page { size: letter; }
       body { font-family: "Courier New", Courier, monospace; font-size: 12pt; line-height: 2; color: #000; margin: 0; padding: 0; }
@@ -363,12 +438,14 @@ export function registerIpcHandlers(): void {
       .part-title { font-family: "Courier New", Courier, monospace; font-size: 12pt; text-transform: uppercase; }
     `
 
-    // Print each section to its own PDF buffer (no built-in header — we'll draw
-    // it ourselves with pdf-lib so the chapter title can vary per section).
-    const sectionPdfs: { title: string; buffer: Uint8Array }[] = []
+    // Print each section to its own PDF buffer. Cover page uses its own CSS;
+    // chapters/parts use the shared pageCSS. No built-in browser header/footer —
+    // we stamp running headers ourselves with pdf-lib so the title varies per section.
+    const sectionPdfs: { title: string; buffer: Uint8Array; isCover: boolean }[] = []
 
     for (const section of sections) {
-      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${pageCSS}</style></head><body>${section.bodyHtml}</body></html>`
+      const css = section.css ?? pageCSS
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${css}</style></head><body>${section.bodyHtml}</body></html>`
       const tempPath = join(tmpdir(), `hohoff-section-${Date.now()}-${Math.round(Math.random() * 1e9)}.html`)
       writeFileSync(tempPath, html, 'utf-8')
       const offscreen = new BrowserWindow({ show: false, webPreferences: { sandbox: false, contextIsolation: true } })
@@ -379,7 +456,7 @@ export function registerIpcHandlers(): void {
           displayHeaderFooter: false,
           margins: { marginType: 'custom', top: 1.0, bottom: 1.0, left: 1.0, right: 1.0 }
         })
-        sectionPdfs.push({ title: section.title, buffer: buf })
+        sectionPdfs.push({ title: section.title, buffer: buf, isCover: section.isCover ?? false })
       } finally {
         offscreen.destroy()
         try { unlinkSync(tempPath) } catch { /* ignore */ }
@@ -390,24 +467,29 @@ export function registerIpcHandlers(): void {
     // belongs to so we can stamp the correct running header on it.
     const mergedPdf = await PDFDocument.create()
     const courier = await mergedPdf.embedFont(StandardFonts.Courier)
-    const pageOwners: string[] = [] // parallel array: pageOwners[i] = section title for page i
+    // pageOwners[i] tracks the section title and whether the page is a cover page
+    const pageOwners: { title: string; isCover: boolean }[] = []
 
-    for (const { title, buffer } of sectionPdfs) {
+    for (const { title, buffer, isCover } of sectionPdfs) {
       const srcPdf = await PDFDocument.load(buffer)
       const copied = await mergedPdf.copyPages(srcPdf, srcPdf.getPageIndices())
       for (const page of copied) {
         mergedPdf.addPage(page)
-        pageOwners.push(title)
+        pageOwners.push({ title, isCover })
       }
     }
 
-    // Draw the running header on every page:  PROJECT TITLE / CHAPTER TITLE / absolute page #
+    // Stamp the running header on body pages only (cover page gets no header).
+    // Page numbers count from 1 starting with the first non-cover page.
     const allPages = mergedPdf.getPages()
+    let bodyPageNum = 0
     for (let i = 0; i < allPages.length; i++) {
+      if (pageOwners[i].isCover) continue   // no header/number on cover page
+      bodyPageNum++
       const page = allPages[i]
       const { width, height } = page.getSize()
-      const chapterUpper = pageOwners[i].toUpperCase()
-      const headerText = `${projectTitle} / ${chapterUpper} / ${i + 1}`
+      const chapterUpper = pageOwners[i].title.toUpperCase()
+      const headerText = `${projectTitle} / ${chapterUpper} / ${bodyPageNum}`
       const fontSize = 11
       const textWidth = courier.widthOfTextAtSize(headerText, fontSize)
       page.drawText(headerText, {

@@ -8,6 +8,12 @@ export interface GlobalConfig {
   projectTitle?: string
   fontSize?: number
   theme?: 'dark' | 'light'
+  // Manuscript metadata
+  authorName?: string
+  penName?: string
+  authorAddress?: string
+  authorEmail?: string
+  authorPhone?: string
 }
 
 const CONFIG_DIR = join(homedir(), '.hohoff')

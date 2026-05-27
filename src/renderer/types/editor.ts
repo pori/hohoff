@@ -2,6 +2,12 @@ export interface GlobalConfig {
   apiKey?: string
   projectPath?: string
   projectTitle?: string
+  // Manuscript metadata
+  authorName?: string
+  penName?: string
+  authorAddress?: string
+  authorEmail?: string
+  authorPhone?: string
 }
 
 export interface FileNode {
