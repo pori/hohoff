@@ -290,11 +290,16 @@ export function registerIpcHandlers(): void {
     if (docs.length === 0) return
 
     const { marked } = await import('marked')
+    const { PDFDocument, rgb, StandardFonts } = await import('pdf-lib')
     const normalize = (s: string) => s.replace(/\r\n/g, '\n').replace(/\n(?!\n)/g, '\n\n')
 
-    let bodyHtml = ''
+    const projectTitle = projectName.toUpperCase()
+
+    // Build an ordered list of sections: part-divider pages + individual chapters.
+    // Each section becomes its own PDF so its title can appear in the running header.
+    interface Section { title: string; bodyHtml: string }
+    const sections: Section[] = []
     let currentPart: string | null = null
-    let needsPageBreak = false
 
     for (const doc of docs) {
       const slashIdx = doc.relativePath.indexOf('/')
@@ -303,66 +308,98 @@ export function registerIpcHandlers(): void {
       if (partName !== null && partName !== currentPart) {
         currentPart = partName
         const safe = partName.replace(/&/g, '&amp;').replace(/</g, '&lt;')
-        bodyHtml += `<div class="page-break part-page"><div class="part-title">${safe}</div></div>`
-        needsPageBreak = false
+        sections.push({
+          title: partName,
+          bodyHtml: `<div class="part-page"><div class="part-title">${safe}</div></div>`
+        })
       }
 
-      const chapterTitle = doc.relativePath.split('/').pop() ?? doc.relativePath
+      const chapterTitle = doc.relativePath.split('/').pop()?.replace(/\.md$/, '') ?? doc.relativePath
       const safeChapterTitle = chapterTitle.replace(/&/g, '&amp;').replace(/</g, '&lt;')
       const contentHtml = await marked(normalize(doc.content))
-      const cls = needsPageBreak ? 'page-break chapter' : 'chapter'
-      bodyHtml += `<div class="${cls}"><h2>${safeChapterTitle}</h2>${contentHtml}</div>`
-      needsPageBreak = true
-    }
-
-    const safeTitle = projectName.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')
-    const headerTitle = projectName.toUpperCase().replace(/</g, '&lt;').replace(/>/g, '&gt;')
-
-    const html = `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>${safeTitle}</title>
-<style>
-  @page { size: letter; margin: 1in; }
-  body { font-family: "Courier New", Courier, monospace; font-size: 12pt; line-height: 2; color: #000; margin: 0; padding: 0; }
-  h1, h2, h3 { font-weight: normal; font-size: 12pt; text-align: center; text-transform: uppercase; margin: 0; line-height: 2; }
-  p { margin: 0; text-indent: 0.5in; text-align: left; }
-  h1 + p, h2 + p, h3 + p, hr + p, .chapter > p:first-child { text-indent: 0; }
-  hr { border: none; margin: 0; height: 2em; text-align: center; }
-  hr::after { content: "#"; display: block; text-align: center; line-height: 2; }
-  em { font-style: italic; }
-  strong { font-weight: bold; }
-  blockquote { margin: 0 0 0 0.5in; }
-  ul, ol { margin: 0 0 0 0.5in; }
-  li { margin: 0; }
-  .page-break { page-break-before: always; }
-  .chapter { padding-top: 2.5in; }
-  .chapter:first-child { padding-top: 0; }
-  .part-page { padding-top: 3.5in; text-align: center; }
-  .part-title { font-family: "Courier New", Courier, monospace; font-size: 12pt; text-transform: uppercase; }
-</style>
-</head>
-<body>${bodyHtml}</body>
-</html>`
-
-    const tempPath = join(tmpdir(), `hohoff-project-export-${Date.now()}.html`)
-    writeFileSync(tempPath, html, 'utf-8')
-
-    const offscreen = new BrowserWindow({ show: false, webPreferences: { sandbox: false, contextIsolation: true } })
-    try {
-      await offscreen.loadFile(tempPath)
-      const pdfBuffer = await offscreen.webContents.printToPDF({
-        pageSize: 'Letter',
-        displayHeaderFooter: true,
-        headerTemplate: `<div style="font-size:11pt;font-family:'Courier New',Courier,monospace;width:100%;text-align:right;padding-right:72pt;">${headerTitle} / <span class="pageNumber"></span></div>`,
-        footerTemplate: '<div></div>',
-        margins: { marginType: 'custom', top: 1.25, bottom: 1.0, left: 1.0, right: 1.0 }
+      sections.push({
+        title: chapterTitle,
+        bodyHtml: `<div class="chapter"><h2>${safeChapterTitle}</h2>${contentHtml}</div>`
       })
-      writeFileSync(result.filePath, pdfBuffer)
-    } finally {
-      offscreen.destroy()
-      try { unlinkSync(tempPath) } catch { /* ignore */ }
     }
+
+    // CSS shared by every section — no page-break rules needed since each section
+    // is its own HTML document printed independently.
+    const pageCSS = `
+      @page { size: letter; }
+      body { font-family: "Courier New", Courier, monospace; font-size: 12pt; line-height: 2; color: #000; margin: 0; padding: 0; }
+      h1, h2, h3 { font-weight: normal; font-size: 12pt; text-align: center; text-transform: uppercase; margin: 0; line-height: 2; }
+      p { margin: 0; text-indent: 0.5in; text-align: left; }
+      h1 + p, h2 + p, h3 + p, hr + p, .chapter > p:first-child { text-indent: 0; }
+      hr { border: none; margin: 0; height: 2em; text-align: center; }
+      hr::after { content: "#"; display: block; text-align: center; line-height: 2; }
+      em { font-style: italic; }
+      strong { font-weight: bold; }
+      blockquote { margin: 0 0 0 0.5in; }
+      ul, ol { margin: 0 0 0 0.5in; }
+      li { margin: 0; }
+      .chapter { padding-top: 2.5in; }
+      .part-page { padding-top: 3.5in; text-align: center; }
+      .part-title { font-family: "Courier New", Courier, monospace; font-size: 12pt; text-transform: uppercase; }
+    `
+
+    // Print each section to its own PDF buffer (no built-in header — we'll draw
+    // it ourselves with pdf-lib so the chapter title can vary per section).
+    const sectionPdfs: { title: string; buffer: Uint8Array }[] = []
+
+    for (const section of sections) {
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${pageCSS}</style></head><body>${section.bodyHtml}</body></html>`
+      const tempPath = join(tmpdir(), `hohoff-section-${Date.now()}-${Math.round(Math.random() * 1e9)}.html`)
+      writeFileSync(tempPath, html, 'utf-8')
+      const offscreen = new BrowserWindow({ show: false, webPreferences: { sandbox: false, contextIsolation: true } })
+      try {
+        await offscreen.loadFile(tempPath)
+        const buf = await offscreen.webContents.printToPDF({
+          pageSize: 'Letter',
+          displayHeaderFooter: false,
+          margins: { marginType: 'custom', top: 1.0, bottom: 1.0, left: 1.0, right: 1.0 }
+        })
+        sectionPdfs.push({ title: section.title, buffer: buf })
+      } finally {
+        offscreen.destroy()
+        try { unlinkSync(tempPath) } catch { /* ignore */ }
+      }
+    }
+
+    // Merge all section PDFs into one document, tracking which section each page
+    // belongs to so we can stamp the correct running header on it.
+    const mergedPdf = await PDFDocument.create()
+    const courier = await mergedPdf.embedFont(StandardFonts.Courier)
+    const pageOwners: string[] = [] // parallel array: pageOwners[i] = section title for page i
+
+    for (const { title, buffer } of sectionPdfs) {
+      const srcPdf = await PDFDocument.load(buffer)
+      const copied = await mergedPdf.copyPages(srcPdf, srcPdf.getPageIndices())
+      for (const page of copied) {
+        mergedPdf.addPage(page)
+        pageOwners.push(title)
+      }
+    }
+
+    // Draw the running header on every page:  PROJECT TITLE / CHAPTER TITLE / absolute page #
+    const allPages = mergedPdf.getPages()
+    for (let i = 0; i < allPages.length; i++) {
+      const page = allPages[i]
+      const { width, height } = page.getSize()
+      const chapterUpper = pageOwners[i].toUpperCase()
+      const headerText = `${projectTitle} / ${chapterUpper} / ${i + 1}`
+      const fontSize = 11
+      const textWidth = courier.widthOfTextAtSize(headerText, fontSize)
+      page.drawText(headerText, {
+        x: width - 72 - textWidth,   // 1 in from right edge (72pt = 1in)
+        y: height - 36,              // 0.5 in from top edge (36pt = 0.5in)
+        size: fontSize,
+        font: courier,
+        color: rgb(0, 0, 0)
+      })
+    }
+
+    const pdfBytes = await mergedPdf.save()
+    writeFileSync(result.filePath, pdfBytes)
   })
 }
