@@ -192,13 +192,14 @@ export function registerIpcHandlers(): void {
     if (result.canceled || !result.filePath) return
 
     const { marked } = await import('marked')
+    const { PDFDocument, rgb, StandardFonts } = await import('pdf-lib')
     // Draft files use single \n between paragraphs; marked needs \n\n to create <p> elements
     const normalized = content.replace(/\r\n/g, '\n').replace(/\n(?!\n)/g, '\n\n')
     const bodyHtml = await marked(normalized)
 
-    // Escape for safe injection into HTML attributes
     const safeTitle = fileName.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')
-    const headerTitle = fileName.toUpperCase().replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    const projectTitle = getProjectTitle().toUpperCase()
+    const chapterTitle = fileName.toUpperCase()
 
     const html = `<!DOCTYPE html>
 <html>
@@ -206,7 +207,7 @@ export function registerIpcHandlers(): void {
 <meta charset="utf-8">
 <title>${safeTitle}</title>
 <style>
-  @page { size: letter; margin: 1in; }
+  @page { size: letter; }
   body {
     font-family: "Courier New", Courier, monospace;
     font-size: 12pt;
@@ -264,12 +265,31 @@ export function registerIpcHandlers(): void {
       await offscreen.loadFile(tempPath)
       const pdfBuffer = await offscreen.webContents.printToPDF({
         pageSize: 'Letter',
-        displayHeaderFooter: true,
-        headerTemplate: `<div style="font-size:11pt;font-family:'Courier New',Courier,monospace;width:100%;text-align:right;padding-right:72pt;">${headerTitle} / <span class="pageNumber"></span></div>`,
-        footerTemplate: '<div></div>',
-        margins: { marginType: 'custom', top: 1.25, bottom: 1.0, left: 1.0, right: 1.0 }
+        displayHeaderFooter: false,
+        margins: { marginType: 'custom', top: 1.0, bottom: 1.0, left: 1.0, right: 1.0 }
       })
-      writeFileSync(result.filePath, pdfBuffer)
+
+      // Stamp the running header on every page using pdf-lib
+      const pdfDoc = await PDFDocument.load(pdfBuffer)
+      const courier = await pdfDoc.embedFont(StandardFonts.Courier)
+      const pages = pdfDoc.getPages()
+      for (let i = 0; i < pages.length; i++) {
+        const page = pages[i]
+        const { width, height } = page.getSize()
+        const headerText = `${projectTitle} / ${chapterTitle} / ${i + 1}`
+        const fontSize = 11
+        const textWidth = courier.widthOfTextAtSize(headerText, fontSize)
+        page.drawText(headerText, {
+          x: width - 72 - textWidth,  // 1 in from right edge
+          y: height - 36,             // 0.5 in from top edge
+          size: fontSize,
+          font: courier,
+          color: rgb(0, 0, 0)
+        })
+      }
+
+      const pdfBytes = await pdfDoc.save()
+      writeFileSync(result.filePath, pdfBytes)
     } finally {
       offscreen.destroy()
       try { unlinkSync(tempPath) } catch { /* ignore */ }
