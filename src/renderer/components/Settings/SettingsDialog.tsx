@@ -10,6 +10,7 @@ interface Props {
 export function SettingsDialog({ onClose, onProjectChanged, isSetup }: Props): JSX.Element {
   const [apiKey, setApiKey] = useState('')
   const [projectPath, setProjectPath] = useState('')
+  const [projectTitle, setProjectTitle] = useState('')
   const [originalPath, setOriginalPath] = useState('')
   const [saved, setSaved] = useState(false)
   const overlayRef = useRef<HTMLDivElement>(null)
@@ -18,6 +19,7 @@ export function SettingsDialog({ onClose, onProjectChanged, isSetup }: Props): J
     window.api.readConfig().then((cfg) => {
       setApiKey(cfg.apiKey ?? '')
       setProjectPath(cfg.projectPath ?? '')
+      setProjectTitle(cfg.projectTitle ?? '')
       setOriginalPath(cfg.projectPath ?? '')
     })
   }, [])
@@ -41,7 +43,7 @@ export function SettingsDialog({ onClose, onProjectChanged, isSetup }: Props): J
   }
 
   const handleSave = async (): Promise<void> => {
-    await window.api.writeConfig({ apiKey: apiKey || undefined, projectPath: projectPath || undefined })
+    await window.api.writeConfig({ apiKey: apiKey || undefined, projectPath: projectPath || undefined, projectTitle: projectTitle.trim() || undefined })
     if (projectPath !== originalPath) onProjectChanged?.()
     setOriginalPath(projectPath)
     setSaved(true)
@@ -77,6 +79,20 @@ export function SettingsDialog({ onClose, onProjectChanged, isSetup }: Props): J
               />
               <button className="settings-browse-btn" onClick={handleBrowse}>Browse…</button>
             </div>
+          </div>
+
+          <div className="settings-field">
+            <label className="settings-label" htmlFor="settings-project-title">Project Title</label>
+            <input
+              id="settings-project-title"
+              className="settings-input"
+              type="text"
+              value={projectTitle}
+              onChange={(e) => setProjectTitle(e.target.value)}
+              placeholder="My Novel"
+              spellCheck={false}
+            />
+            <p className="settings-hint">Used as the title in PDF exports. Defaults to the project folder name if left blank.</p>
           </div>
 
           <div className="settings-field">

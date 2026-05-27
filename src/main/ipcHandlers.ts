@@ -6,7 +6,7 @@ import { listDraftFiles, readMarkdownFile, writeMarkdownFile, getProjectWordCoun
 import type { SearchOptions } from './fileSystem'
 import { streamMessage, resetClient } from './aiService'
 import type { AIPayload, Attachment } from '../renderer/types/editor'
-import { readGlobalConfig, writeGlobalConfig, getDraftRoot } from './globalConfig'
+import { readGlobalConfig, writeGlobalConfig, getProjectTitle } from './globalConfig'
 import type { GlobalConfig } from './globalConfig'
 
 export function registerIpcHandlers(): void {
@@ -278,7 +278,7 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('export:projectPdf', async (event): Promise<void> => {
     const win = BrowserWindow.fromWebContents(event.sender)
-    const projectName = basename(getDraftRoot())
+    const projectName = getProjectTitle()
 
     const result = await dialog.showSaveDialog(win!, {
       defaultPath: `${projectName}.pdf`,

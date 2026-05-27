@@ -1,10 +1,11 @@
-import { join } from 'path'
+import { join, basename } from 'path'
 import { homedir } from 'os'
 import { readFileSync, writeFileSync, mkdirSync } from 'fs'
 
 export interface GlobalConfig {
   apiKey?: string
   projectPath?: string
+  projectTitle?: string
   fontSize?: number
   theme?: 'dark' | 'light'
 }
@@ -27,6 +28,9 @@ export const getDraftRoot = (): string =>
 
 export const getApiKey = (): string | undefined =>
   _config.apiKey ?? process.env.ANTHROPIC_API_KEY
+
+export const getProjectTitle = (): string =>
+  _config.projectTitle?.trim() || basename(getDraftRoot())
 
 export function readGlobalConfig(): GlobalConfig {
   return { ..._config }

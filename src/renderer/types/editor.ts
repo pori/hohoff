@@ -1,6 +1,7 @@
 export interface GlobalConfig {
   apiKey?: string
   projectPath?: string
+  projectTitle?: string
 }
 
 export interface FileNode {
