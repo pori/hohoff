@@ -2,12 +2,20 @@ import { ipcMain, dialog, BrowserWindow } from 'electron'
 import { readFileSync, writeFileSync, unlinkSync } from 'fs'
 import { extname, basename, join } from 'path'
 import { tmpdir } from 'os'
-import { listDraftFiles, readMarkdownFile, writeMarkdownFile, getProjectWordCount, saveOrderFile, readSession, writeSession, saveRevision, listRevisions, loadRevision, deleteRevision, renameFileOrDir, deleteFileOrDir, createMarkdownFile, createSubdirectory, moveFileOrDir, readStoryBibleFile, openStoryBibleFile, writeStoryBibleFile, searchAcrossFiles, replaceInFiles, readAllDraftFiles } from './fileSystem'
-import type { SearchOptions } from './fileSystem'
+import { listDraftFiles, readMarkdownFile, writeMarkdownFile, getProjectWordCount, saveOrderFile, readSession, writeSession, saveRevision, listRevisions, loadRevision, deleteRevision, renameFileOrDir, deleteFileOrDir, createMarkdownFile, createSubdirectory, moveFileOrDir, readStoryBibleFile, openStoryBibleFile, writeStoryBibleFile, searchAcrossFiles, replaceInFiles, readAllDraftFiles, readProjectConfig, writeProjectConfig, PROJECT_CONFIG_FIELDS } from './fileSystem'
+import type { SearchOptions, ProjectConfig } from './fileSystem'
 import { streamMessage, resetClient } from './aiService'
 import type { AIPayload, Attachment } from '../renderer/types/editor'
-import { readGlobalConfig, writeGlobalConfig, getProjectTitle } from './globalConfig'
+import { readGlobalConfig, writeGlobalConfig, getProjectTitle, addRecentProject, updateRecentProjectTitle } from './globalConfig'
 import type { GlobalConfig } from './globalConfig'
+
+type MergedConfig = GlobalConfig & ProjectConfig
+
+let _onProjectChanged: (() => void) | null = null
+
+export function setOnProjectChanged(cb: () => void): void {
+  _onProjectChanged = cb
+}
 
 export function registerIpcHandlers(): void {
   ipcMain.handle('fs:listFiles', async () => {
@@ -168,13 +176,59 @@ export function registerIpcHandlers(): void {
     }
   })
 
-  ipcMain.handle('config:read', (): GlobalConfig => {
-    return readGlobalConfig()
+  ipcMain.handle('config:read', async (): Promise<MergedConfig> => {
+    const global = readGlobalConfig()
+    const project = await readProjectConfig()
+
+    // One-time migration: if global has project fields, move them to project config
+    const legacyGlobal = global as Record<string, unknown>
+    const migrationFields = PROJECT_CONFIG_FIELDS.filter((f) => legacyGlobal[f] !== undefined)
+    if (migrationFields.length > 0 && Object.keys(project).length === 0) {
+      const migrated: Partial<ProjectConfig> = {}
+      for (const f of migrationFields) {
+        (migrated as Record<string, unknown>)[f] = legacyGlobal[f]
+      }
+      await writeProjectConfig(migrated)
+      // Remove from global config
+      const cleaned = { ...legacyGlobal }
+      for (const f of migrationFields) delete cleaned[f]
+      writeGlobalConfig(cleaned as Partial<GlobalConfig>)
+      return { ...global, ...migrated }
+    }
+
+    return { ...global, ...project }
   })
 
-  ipcMain.handle('config:write', (_event, updates: Partial<GlobalConfig>): void => {
-    writeGlobalConfig(updates)
+  ipcMain.handle('config:write', async (_event, updates: Partial<MergedConfig>): Promise<void> => {
+    const globalUpdates: Partial<GlobalConfig> = {}
+    const projectUpdates: Partial<ProjectConfig> = {}
+
+    for (const [key, value] of Object.entries(updates)) {
+      if ((PROJECT_CONFIG_FIELDS as string[]).includes(key)) {
+        (projectUpdates as Record<string, unknown>)[key] = value
+      } else {
+        (globalUpdates as Record<string, unknown>)[key] = value
+      }
+    }
+
+    if (Object.keys(globalUpdates).length > 0) writeGlobalConfig(globalUpdates)
+    if (Object.keys(projectUpdates).length > 0) await writeProjectConfig(projectUpdates)
+
     if (updates.apiKey !== undefined) resetClient()
+
+    if (updates.projectPath) {
+      const projectCfg = await readProjectConfig()
+      const { basename } = require('path') as typeof import('path')
+      addRecentProject(updates.projectPath, projectCfg.projectTitle?.trim() || basename(updates.projectPath))
+      _onProjectChanged?.()
+    } else if (updates.projectTitle !== undefined) {
+      const currentPath = readGlobalConfig().projectPath
+      if (currentPath) {
+        const { basename } = require('path') as typeof import('path')
+        updateRecentProjectTitle(currentPath, updates.projectTitle.trim() || basename(currentPath))
+        _onProjectChanged?.()
+      }
+    }
   })
 
   ipcMain.handle('config:pickFolder', async (event): Promise<string | null> => {
@@ -198,7 +252,8 @@ export function registerIpcHandlers(): void {
     const bodyHtml = await marked(normalized)
 
     const safeTitle = fileName.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')
-    const projectTitle = getProjectTitle().toUpperCase()
+    const projectCfgForPdf = await readProjectConfig()
+    const projectTitle = getProjectTitle(projectCfgForPdf.projectTitle).toUpperCase()
     const chapterTitle = fileName.toUpperCase()
 
     const html = `<!DOCTYPE html>
@@ -298,7 +353,8 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('export:projectPdf', async (event): Promise<void> => {
     const win = BrowserWindow.fromWebContents(event.sender)
-    const projectName = getProjectTitle()
+    const projectCfg = await readProjectConfig()
+    const projectName = getProjectTitle(projectCfg.projectTitle)
 
     const result = await dialog.showSaveDialog(win!, {
       defaultPath: `${projectName}.pdf`,
@@ -318,12 +374,11 @@ export function registerIpcHandlers(): void {
     const projectTitle = projectName.toUpperCase()
 
     // ── Cover page ──────────────────────────────────────────────────────────────
-    const cfg = readGlobalConfig()
-    const authorLegal  = cfg.authorName?.trim()  ?? ''
-    const authorByline = cfg.penName?.trim()      || authorLegal
-    const authorAddr   = cfg.authorAddress?.trim() ?? ''
-    const authorEmail  = cfg.authorEmail?.trim()  ?? ''
-    const authorPhone  = cfg.authorPhone?.trim()  ?? ''
+    const authorLegal  = projectCfg.authorName?.trim()  ?? ''
+    const authorByline = projectCfg.penName?.trim()      || authorLegal
+    const authorAddr   = projectCfg.authorAddress?.trim() ?? ''
+    const authorEmail  = projectCfg.authorEmail?.trim()  ?? ''
+    const authorPhone  = projectCfg.authorPhone?.trim()  ?? ''
 
     // Count words from docs already in memory, rounded to nearest 1,000
     const totalWords = docs.reduce((sum, doc) => {

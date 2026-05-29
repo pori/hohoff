@@ -1,8 +1,8 @@
 import { app, BrowserWindow, shell, nativeImage, Menu, dialog } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import { registerIpcHandlers } from './ipcHandlers'
-import { getDraftRoot } from './globalConfig'
+import { registerIpcHandlers, setOnProjectChanged } from './ipcHandlers'
+import { getDraftRoot, getRecentProjects, writeGlobalConfig } from './globalConfig'
 
 app.setName('Hohoff')
 
@@ -10,7 +10,14 @@ function send(win: BrowserWindow, action: string): void {
   if (!win.isDestroyed()) win.webContents.send('menu:action', action)
 }
 
+let _menuWin: BrowserWindow | null = null
+
+export function rebuildAppMenu(): void {
+  if (_menuWin) buildAppMenu(_menuWin)
+}
+
 function buildAppMenu(win: BrowserWindow): void {
+  _menuWin = win
   const isMac = process.platform === 'darwin'
 
   const template: Electron.MenuItemConstructorOptions[] = [
@@ -57,6 +64,29 @@ function buildAppMenu(win: BrowserWindow): void {
           label: 'Open…',
           accelerator: 'CmdOrCtrl+Shift+O',
           click: () => send(win, 'openProject')
+        },
+        {
+          label: 'Open Recent',
+          submenu: (() => {
+            const recents = getRecentProjects()
+            if (recents.length === 0) {
+              return [{ label: 'No Recent Projects', enabled: false }]
+            }
+            return [
+              ...recents.map((r) => ({
+                label: `${r.title} (${r.path})`,
+                click: () => win.webContents.send('menu:action', `openRecent:${r.path}`)
+              })),
+              { type: 'separator' as const },
+              {
+                label: 'Clear Recent',
+                click: () => {
+                  writeGlobalConfig({ recentProjects: [] })
+                  rebuildAppMenu()
+                }
+              }
+            ]
+          })()
         },
         { type: 'separator' },
         {
@@ -243,6 +273,7 @@ app.whenReady().then(() => {
   registerIpcHandlers()
   const mainWindow = createWindow()
   buildAppMenu(mainWindow)
+  setOnProjectChanged(rebuildAppMenu)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

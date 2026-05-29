@@ -71,6 +71,42 @@ export async function writeSession(data: Record<string, unknown>): Promise<void>
   await writeFile(sessionFile(), JSON.stringify(data), 'utf-8')
 }
 
+export interface ProjectConfig {
+  projectTitle?: string
+  authorName?: string
+  penName?: string
+  authorAddress?: string
+  authorEmail?: string
+  authorPhone?: string
+}
+
+const PROJECT_CONFIG_FIELDS: (keyof ProjectConfig)[] = [
+  'projectTitle', 'authorName', 'penName', 'authorAddress', 'authorEmail', 'authorPhone'
+]
+
+export { PROJECT_CONFIG_FIELDS }
+
+const projectConfigFile = (): string => join(hohoffDir(), 'project.json')
+
+export async function readProjectConfig(): Promise<ProjectConfig> {
+  try {
+    return JSON.parse(await readFile(projectConfigFile(), 'utf-8'))
+  } catch {
+    return {}
+  }
+}
+
+export async function writeProjectConfig(updates: Partial<ProjectConfig>): Promise<void> {
+  await mkdir(hohoffDir(), { recursive: true })
+  const existing = await readProjectConfig()
+  const merged = { ...existing, ...updates }
+  // Remove undefined values
+  for (const key of Object.keys(merged) as (keyof ProjectConfig)[]) {
+    if (merged[key] === undefined) delete merged[key]
+  }
+  await writeFile(projectConfigFile(), JSON.stringify(merged, null, 2), 'utf-8')
+}
+
 function applyOrder(nodes: FileNode[], savedNames: string[]): FileNode[] {
   const map = new Map(nodes.map((n) => [n.name, n]))
   const ordered = savedNames.filter((n) => map.has(n)).map((n) => map.get(n)!)

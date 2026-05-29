@@ -101,20 +101,6 @@ export function SettingsDialog({ onClose, onProjectChanged, isSetup }: Props): J
           </div>
 
           <div className="settings-field">
-            <label className="settings-label" htmlFor="settings-project-title">Project Title</label>
-            <input
-              id="settings-project-title"
-              className="settings-input"
-              type="text"
-              value={projectTitle}
-              onChange={(e) => setProjectTitle(e.target.value)}
-              placeholder="My Novel"
-              spellCheck={false}
-            />
-            <p className="settings-hint">Used as the title in PDF exports. Defaults to the project folder name if left blank.</p>
-          </div>
-
-          <div className="settings-field">
             <label className="settings-label" htmlFor="settings-api-key">Anthropic API Key</label>
             <input
               id="settings-api-key"
@@ -130,6 +116,20 @@ export function SettingsDialog({ onClose, onProjectChanged, isSetup }: Props): J
           </div>
 
           <div className="settings-section-divider"><span>Manuscript</span></div>
+
+          <div className="settings-field">
+            <label className="settings-label" htmlFor="settings-project-title">Project Title</label>
+            <input
+              id="settings-project-title"
+              className="settings-input"
+              type="text"
+              value={projectTitle}
+              onChange={(e) => setProjectTitle(e.target.value)}
+              placeholder="My Novel"
+              spellCheck={false}
+            />
+            <p className="settings-hint">Used as the title in PDF exports. Defaults to the project folder name if left blank.</p>
+          </div>
 
           <div className="settings-field">
             <label className="settings-label" htmlFor="settings-author-name">Author Name</label>
@@ -201,7 +201,7 @@ export function SettingsDialog({ onClose, onProjectChanged, isSetup }: Props): J
         </div>
 
         <div className="settings-footer">
-          <span className="settings-config-path">Config: ~/.hohoff/config.json</span>
+          <span className="settings-config-path">Global: ~/.hohoff/config.json · Project: .hohoff/project.json</span>
           <div className="settings-footer-actions">
             {!isSetup && (
               <button className="settings-btn settings-btn--secondary" onClick={onClose}>Cancel</button>
