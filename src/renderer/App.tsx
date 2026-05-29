@@ -141,12 +141,14 @@ export default function App(): JSX.Element {
               className={`app-layout-toggle-seg${sidebarOpen ? ' active' : ''}`}
               onClick={() => setSidebarOpen((v) => { const next = !v; localStorage.setItem('sidebarOpen', String(next)); return next })}
               title={sidebarOpen ? 'Hide file tree' : 'Show file tree'}
+              disabled={focusMode}
             />
             <div className="app-layout-toggle-seg app-layout-toggle-seg--mid" />
             <button
               className={`app-layout-toggle-seg${chatOpen ? ' active' : ''}`}
               onClick={() => setChatOpen((v) => { const next = !v; localStorage.setItem('chatOpen', String(next)); return next })}
               title={chatOpen ? 'Hide AI chat' : 'Show AI chat'}
+              disabled={focusMode}
             />
           </div>
           <div className="app-titlebar-icon-group">
