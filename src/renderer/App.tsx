@@ -39,8 +39,9 @@ export default function App(): JSX.Element {
   const switchProject = async (newPath: string): Promise<void> => {
     await window.api.writeConfig({ projectPath: newPath })
     clearActiveFile()
-    loadSession()
-    window.api.listFiles().then(setFileTree)
+    const files = await window.api.listFiles()
+    setFileTree(files)
+    await loadSession()
   }
 
   // Load file tree, restore prefs + session, and detect first run
@@ -189,10 +190,11 @@ export default function App(): JSX.Element {
         <SettingsDialog
           onClose={() => { setSettingsOpen(false); setIsFirstRun(false) }}
           isSetup={isFirstRun}
-          onProjectChanged={() => {
+          onProjectChanged={async () => {
             clearActiveFile()
-            loadSession()
-            window.api.listFiles().then(setFileTree)
+            const files = await window.api.listFiles()
+            setFileTree(files)
+            await loadSession()
           }}
         />
       )}
