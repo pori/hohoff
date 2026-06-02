@@ -1034,7 +1034,7 @@ export function MarkdownEditor(): JSX.Element {
             }}
             title="Export document as PDF"
           >
-            ↑
+            ⎙
           </button>
         </div>
       )}
