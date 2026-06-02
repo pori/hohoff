@@ -389,6 +389,7 @@ const annotationHistory = invertedEffects.of(tr => {
 })
 
 const themeCompartment = new Compartment()
+const editableCompartment = new Compartment()
 
 const markdownHighlight = HighlightStyle.define([
   { tag: tags.heading,  fontWeight: '700', color: 'var(--heading-color)' },
@@ -696,6 +697,7 @@ export function MarkdownEditor(): JSX.Element {
           annotationHistory,
           hrPlugin,
           themeCompartment.of(buildTheme(fontSize, theme === 'dark', focusMode)),
+          editableCompartment.of(EditorView.editable.of(false)),
           EditorView.lineWrapping,
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {
@@ -817,6 +819,7 @@ export function MarkdownEditor(): JSX.Element {
         annotations: Transaction.addToHistory.of(false)
       })
       view.dispatch({ selection: { anchor: 0 } })
+      view.dispatch({ effects: editableCompartment.reconfigure(EditorView.editable.of(!!activeFilePath)) })
       // Restore saved scroll position, or go to top for new files
       const savedScroll = activeFilePath ? scrollPositions[activeFilePath] ?? 0 : 0
       // Defer scroll restoration so CodeMirror finishes laying out the new content
