@@ -16,15 +16,39 @@
 
 .editor-statusbar {
   flex-shrink: 0;
-  padding: 3px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 3px 10px 3px 14px;
   font-family: var(--font-sans);
   font-size: 11px;
   color: var(--text-muted);
-  text-align: right;
   opacity: 0.55;
   border-top: 1px solid var(--border);
   user-select: none;
-  pointer-events: none;
+  transition: opacity 0.15s;
+}
+
+.editor-statusbar:hover {
+  opacity: 0.8;
+}
+
+.statusbar-share-btn {
+  background: none;
+  border: none;
+  padding: 0 2px;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.statusbar-share-btn:hover {
+  opacity: 1;
+  color: var(--text-primary);
 }
 
 .codemirror-host .cm-editor {

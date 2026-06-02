@@ -1025,7 +1025,17 @@ export function MarkdownEditor(): JSX.Element {
       )}
       {activeFilePath && (
         <div className="editor-statusbar">
-          word {wordStats.atCursor.toLocaleString()} of {wordStats.total.toLocaleString()}
+          <span>word {wordStats.atCursor.toLocaleString()} of {wordStats.total.toLocaleString()}</span>
+          <button
+            className="statusbar-share-btn"
+            onClick={async () => {
+              const fileName = activeFilePath.split('/').pop()?.replace(/\.md$/, '') ?? 'document'
+              await window.api.exportPDF(activeFileContent, fileName)
+            }}
+            title="Export document as PDF"
+          >
+            ↑
+          </button>
         </div>
       )}
     </div>
