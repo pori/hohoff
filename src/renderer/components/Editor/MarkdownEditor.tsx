@@ -681,6 +681,21 @@ export function MarkdownEditor(): JSX.Element {
             { key: 'Mod-Shift-s', run: (view) => wrapOrUnwrap(view, '~~') },
             { key: 'Mod-e', run: (view) => wrapOrUnwrap(view, '`') },
             { key: 'Mod-k', run: insertLink },
+            {
+              key: '-',
+              run: (view) => {
+                const { state } = view
+                const { from } = state.selection.main
+                if (from >= 1 && state.sliceDoc(from - 1, from) === '-') {
+                  view.dispatch(state.update({
+                    changes: { from: from - 1, to: from, insert: '—' },
+                    userEvent: 'input'
+                  }))
+                  return true
+                }
+                return false
+              }
+            },
             { key: 'Mod-Shift-.', run: (view) => toggleLinePrefix(view, '> ') },
             { key: 'Mod-1', run: (view) => setHeading(view, 1) },
             { key: 'Mod-2', run: (view) => setHeading(view, 2) },
