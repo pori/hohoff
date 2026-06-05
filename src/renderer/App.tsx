@@ -44,17 +44,21 @@ export default function App(): JSX.Element {
     await loadSession()
   }
 
-  // Load file tree, restore prefs + session, and detect first run
+  // Load file tree, restore prefs + session, and detect first run.
+  // Draft-directory calls are sequenced so macOS only prompts for folder access once.
   useEffect(() => {
-    window.api.listFiles().then(setFileTree)
-    initPrefs()
-    loadSession()
-    window.api.readConfig().then((cfg) => {
+    async function init(): Promise<void> {
+      initPrefs()
+      const files = await window.api.listFiles()
+      setFileTree(files)
+      await loadSession()
+      const cfg = await window.api.readConfig()
       if (!cfg.apiKey || !cfg.projectPath) {
         setIsFirstRun(true)
         setSettingsOpen(true)
       }
-    })
+    }
+    init()
   }, [])
 
   // Handle menu actions sent from the main process
