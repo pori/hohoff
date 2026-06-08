@@ -437,6 +437,58 @@ const hrPlugin = ViewPlugin.fromClass(
   { decorations: v => v.decorations }
 )
 
+// Paragraph indent plugin — adds first-line indent to paragraph lines.
+// Paragraphs in the manuscript use single newlines (no blank separators),
+// so every text line is a paragraph. We indent all of them except the first
+// paragraph after a heading, HR, or document start (traditional typography).
+const blankLineDeco = Decoration.line({ class: 'cm-blank-line' })
+const paragraphStartDeco = Decoration.line({ class: 'cm-paragraph-start' })
+
+function buildParagraphDecos(view: EditorView): DecorationSet {
+  const builder = new RangeSetBuilder<Decoration>()
+  const doc = view.state.doc
+  // Start true so the very first text paragraph gets no indent
+  let skipNextIndent = true
+
+  for (let n = 1; n <= doc.lines; n++) {
+    const line = doc.line(n)
+    const text = line.text
+    const isBlank = text.trim() === ''
+    const isHeading = /^#{1,6} /.test(text)
+    const isHR = /^---+$/.test(text.trim())
+    const isSpecial = /^[-*>]/.test(text)  // list / blockquote
+
+    if (isBlank) {
+      builder.add(line.from, line.from, blankLineDeco)
+      // blank lines don't affect the skip flag
+    } else if (isHeading || isHR) {
+      skipNextIndent = true
+    } else if (isSpecial) {
+      skipNextIndent = false
+    } else {
+      // Regular text paragraph
+      if (!skipNextIndent) {
+        builder.add(line.from, line.from, paragraphStartDeco)
+      }
+      skipNextIndent = false
+    }
+  }
+  return builder.finish()
+}
+
+const paragraphIndentPlugin = ViewPlugin.fromClass(
+  class {
+    decorations: DecorationSet
+    constructor(view: EditorView) { this.decorations = buildParagraphDecos(view) }
+    update(update: ViewUpdate) {
+      if (update.docChanged || update.viewportChanged) {
+        this.decorations = buildParagraphDecos(update.view)
+      }
+    }
+  },
+  { decorations: v => v.decorations }
+)
+
 function buildTheme(fontSize: number, dark: boolean, focusMode = false): ReturnType<typeof EditorView.theme> {
   const displaySize = focusMode ? Math.max(fontSize + 3, 18) : fontSize
   const maxWidth = focusMode ? '92vw' : '740px'
@@ -464,7 +516,8 @@ function buildTheme(fontSize: number, dark: boolean, focusMode = false): ReturnT
     '.cm-cursor': { borderLeftColor: 'var(--accent)' },
     '.cm-selectionBackground': { backgroundColor: 'var(--active-bg)' },
     '&.cm-focused .cm-selectionBackground': { backgroundColor: 'var(--active-bg)' },
-    '.cm-line': { paddingBottom: '14px' },
+    '.cm-blank-line': { fontSize: '0.45em', lineHeight: '1' },
+    '.cm-paragraph-start': { textIndent: '2em' },
     '.cm-gutters': { display: 'none' },
     '.cm-activeLine': { backgroundColor: 'transparent' },
     '.cm-activeLineGutter': { backgroundColor: 'transparent' },
@@ -729,6 +782,7 @@ export function MarkdownEditor(): JSX.Element {
           annotationHoverTooltip,
           annotationHistory,
           hrPlugin,
+          paragraphIndentPlugin,
           themeCompartment.of(buildTheme(fontSize, theme === 'dark', focusMode)),
           editableCompartment.of(EditorView.editable.of(false)),
           EditorView.lineWrapping,
