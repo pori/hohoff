@@ -93,23 +93,30 @@ npm run typecheck  # Type-check (Node + browser configs)
 
 ## Project structure
 
+The app and your manuscript are completely separate directories.
+
+**App (this repository):**
 ```
 hohoff/
-├── src/
-│   ├── main/               Node process: file I/O, AI calls, IPC handlers
-│   ├── preload/            contextBridge (renderer ↔ main)
-│   └── renderer/           React UI (editor, chat, file tree, panels)
-└── <your project folder>/  Manuscript files (Markdown)
-    ├── Prologue.md
-    ├── Part I/
-    │   └── *.md
-    ├── Part II/ … Part IV/
-    ├── Epilogue.md
-    └── .hohoff/            App metadata (not manuscript content)
-        ├── order.json      Custom file ordering
-        ├── session.json    Persisted app state
-        ├── revisions/      Version history
-        └── Story Bible.md  Reference file (optional)
+└── src/
+    ├── main/               Node process: file I/O, AI calls, IPC handlers
+    ├── preload/            contextBridge (renderer ↔ main)
+    └── renderer/           React UI (editor, chat, file tree, panels)
+```
+
+**Manuscript (anywhere on your machine, e.g. `~/Documents/My Novel/`):**
+```
+My Novel/
+├── Prologue.md
+├── Part I/
+│   └── *.md
+├── Part II/ … Part IV/
+├── Epilogue.md
+└── .hohoff/                App metadata (not manuscript content)
+    ├── order.json          Custom file ordering
+    ├── session.json        Persisted app state
+    ├── revisions/          Version history
+    └── Story Bible.md      Reference file (optional)
 ```
 
 ---
