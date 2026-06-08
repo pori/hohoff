@@ -69,7 +69,7 @@ Every save creates a versioned snapshot in `.hohoff/.revisions/`. The revisions 
 
 ```bash
 git clone <repo>
-cd hohoff/app
+cd hohoff
 npm install
 ```
 
@@ -84,7 +84,6 @@ Configuration is stored in `~/.hohoff/config.json`.
 ## Development
 
 ```bash
-cd app
 npm run dev        # Electron dev server with hot reload
 npm run build      # Production build
 npm run typecheck  # Type-check (Node + browser configs)
@@ -96,21 +95,20 @@ npm run typecheck  # Type-check (Node + browser configs)
 
 ```
 hohoff/
-├── app/                    Electron application
-│   └── src/
-│       ├── main/           Node process: file I/O, AI calls, IPC handlers
-│       ├── preload/        contextBridge (renderer ↔ main)
-│       └── renderer/       React UI (editor, chat, file tree, panels)
-└── draft/                  Manuscript files (Markdown)
+├── src/
+│   ├── main/               Node process: file I/O, AI calls, IPC handlers
+│   ├── preload/            contextBridge (renderer ↔ main)
+│   └── renderer/           React UI (editor, chat, file tree, panels)
+└── <your project folder>/  Manuscript files (Markdown)
     ├── Prologue.md
     ├── Part I/
     │   └── *.md
     ├── Part II/ … Part IV/
     ├── Epilogue.md
     └── .hohoff/            App metadata (not manuscript content)
-        ├── .order.json     Custom file ordering
-        ├── .session.json   Persisted app state
-        ├── .revisions/     Version history
+        ├── order.json      Custom file ordering
+        ├── session.json    Persisted app state
+        ├── revisions/      Version history
         └── Story Bible.md  Reference file (optional)
 ```
 
