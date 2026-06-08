@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { EditorView, Decoration, type DecorationSet, hoverTooltip, keymap, ViewPlugin, WidgetType, type ViewUpdate } from '@codemirror/view'
+import { EditorView, Decoration, type DecorationSet, hoverTooltip, keymap, ViewPlugin, WidgetType, type ViewUpdate, dropCursor, drawSelection } from '@codemirror/view'
 import { EditorState, EditorSelection, StateField, StateEffect, Annotation, RangeSetBuilder, Compartment, Transaction } from '@codemirror/state'
 import { markdown } from '@codemirror/lang-markdown'
 import { syntaxHighlighting, HighlightStyle, syntaxTree, indentUnit } from '@codemirror/language'
@@ -660,13 +660,31 @@ export function MarkdownEditor(): JSX.Element {
   useEffect(() => {
     if (!containerRef.current) return
 
+    // Debounced setContent — avoids a Zustand→React re-render on every keystroke.
+    // The actual file save already has its own 1500ms debounce downstream.
+    let contentTimer: ReturnType<typeof setTimeout> | null = null
+    function scheduleSetContent(text: string): void {
+      if (contentTimer) clearTimeout(contentTimer)
+      contentTimer = setTimeout(() => { contentTimer = null; setContent(text) }, 400)
+    }
+
+    // Debounced word count — avoids expensive string ops on every cursor move.
+    let wordTimer: ReturnType<typeof setTimeout> | null = null
+    function scheduleWordStats(getStats: () => { atCursor: number; total: number }): void {
+      if (wordTimer) clearTimeout(wordTimer)
+      wordTimer = setTimeout(() => { wordTimer = null; setWordStats(getStats()) }, 150)
+    }
+
     const view = new EditorView({
       state: EditorState.create({
         doc: '',
         extensions: [
           indentUnit.of("    "),
           history(),
+          drawSelection(),
+          dropCursor(),
           search({ top: true }),
+          EditorView.contentAttributes.of({ spellcheck: 'true' }),
           keymap.of([
             {
               key: 'Tab',
@@ -716,13 +734,21 @@ export function MarkdownEditor(): JSX.Element {
           EditorView.lineWrapping,
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {
-              setContent(update.state.doc.toString())
-              wordTotalRef.current = countWords(update.state.doc.toString())
-            }
-            if (update.selectionSet || update.docChanged) {
+              const text = update.state.doc.toString()
+              scheduleSetContent(text)
+              const total = countWords(text)
+              wordTotalRef.current = total
               const head = update.state.selection.main.head
-              const atCursor = countWords(update.state.doc.sliceString(0, head))
-              setWordStats({ atCursor, total: wordTotalRef.current })
+              scheduleWordStats(() => ({
+                atCursor: countWords(update.state.doc.sliceString(0, head)),
+                total: wordTotalRef.current
+              }))
+            } else if (update.selectionSet) {
+              const head = update.state.selection.main.head
+              scheduleWordStats(() => ({
+                atCursor: countWords(update.state.doc.sliceString(0, head)),
+                total: wordTotalRef.current
+              }))
             }
             if (update.selectionSet) {
               const { from, to } = update.state.selection.main
@@ -815,6 +841,8 @@ export function MarkdownEditor(): JSX.Element {
     return () => {
       view.scrollDOM.removeEventListener('scroll', onScroll)
       if (scrollTimer) clearTimeout(scrollTimer)
+      if (contentTimer) clearTimeout(contentTimer)
+      if (wordTimer) clearTimeout(wordTimer)
       view.destroy()
       viewRef.current = null
       currentEditorView = null
