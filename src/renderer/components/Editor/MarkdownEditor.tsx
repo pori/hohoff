@@ -441,36 +441,24 @@ const hrPlugin = ViewPlugin.fromClass(
 // Paragraphs in the manuscript use single newlines (no blank separators),
 // so every text line is a paragraph. We indent all of them except the first
 // paragraph after a heading, HR, or document start (traditional typography).
-const blankLineDeco = Decoration.line({ class: 'cm-blank-line' })
-const paragraphStartDeco = Decoration.line({ class: 'cm-paragraph-start' })
+const noIndentDeco = Decoration.line({ class: 'cm-no-indent' })
 
 function buildParagraphDecos(view: EditorView): DecorationSet {
   const builder = new RangeSetBuilder<Decoration>()
   const doc = view.state.doc
-  // Start true so the very first text paragraph gets no indent
-  let skipNextIndent = true
 
   for (let n = 1; n <= doc.lines; n++) {
     const line = doc.line(n)
     const text = line.text
-    const isBlank = text.trim() === ''
     const isHeading = /^#{1,6} /.test(text)
     const isHR = /^---+$/.test(text.trim())
-    const isSpecial = /^[-*>]/.test(text)  // list / blockquote
+    const isSpecial = /^[-*>]/.test(text)  // list / blockquote / blank
 
-    if (isBlank) {
-      builder.add(line.from, line.from, blankLineDeco)
-      // blank lines don't affect the skip flag
-    } else if (isHeading || isHR) {
-      skipNextIndent = true
-    } else if (isSpecial) {
-      skipNextIndent = false
-    } else {
-      // Regular text paragraph
-      if (!skipNextIndent) {
-        builder.add(line.from, line.from, paragraphStartDeco)
-      }
-      skipNextIndent = false
+    // Only suppress indent for structural lines — never for regular text.
+    // This ensures no text line ever changes its decoration status based on
+    // neighboring lines, eliminating cascade-induced layout shifts.
+    if (isHeading || isHR || isSpecial) {
+      builder.add(line.from, line.from, noIndentDeco)
     }
   }
   return builder.finish()
@@ -481,7 +469,7 @@ const paragraphIndentPlugin = ViewPlugin.fromClass(
     decorations: DecorationSet
     constructor(view: EditorView) { this.decorations = buildParagraphDecos(view) }
     update(update: ViewUpdate) {
-      if (update.docChanged || update.viewportChanged) {
+      if (update.docChanged) {
         this.decorations = buildParagraphDecos(update.view)
       }
     }
@@ -516,8 +504,8 @@ function buildTheme(fontSize: number, dark: boolean, focusMode = false): ReturnT
     '.cm-cursor': { borderLeftColor: 'var(--accent)' },
     '.cm-selectionBackground': { backgroundColor: 'var(--active-bg)' },
     '&.cm-focused .cm-selectionBackground': { backgroundColor: 'var(--active-bg)' },
-    '.cm-blank-line': { fontSize: '0.45em', lineHeight: '1' },
-    '.cm-paragraph-start': { textIndent: '2em' },
+    '.cm-line': { textIndent: '2em' },
+    '.cm-no-indent': { textIndent: '0' },
     '.cm-gutters': { display: 'none' },
     '.cm-activeLine': { backgroundColor: 'transparent' },
     '.cm-activeLineGutter': { backgroundColor: 'transparent' },
