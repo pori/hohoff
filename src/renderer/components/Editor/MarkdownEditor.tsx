@@ -437,11 +437,24 @@ const hrPlugin = ViewPlugin.fromClass(
   { decorations: v => v.decorations }
 )
 
-// Paragraph indent plugin — adds first-line indent to paragraph lines.
-// Paragraphs in the manuscript use single newlines (no blank separators),
-// so every text line is a paragraph. We indent all of them except the first
-// paragraph after a heading, HR, or document start (traditional typography).
-const noIndentDeco = Decoration.line({ class: 'cm-no-indent' })
+// Paragraph indent plugin — inserts a zero-height 2em widget at the start of
+// each paragraph line. Widgets are accounted for in CodeMirror's cursor
+// positioning, so the cursor on a blank line already sits at the indent
+// position before any text is typed — eliminating the layout shift.
+// Being an inline element at position 0, it only indents the first visual
+// line of each wrapped paragraph (true first-line indent, not block indent).
+class IndentWidget extends WidgetType {
+  eq(other: WidgetType): boolean { return other instanceof IndentWidget }
+  toDOM(): HTMLElement {
+    const span = document.createElement('span')
+    span.style.cssText = 'display:inline-block;width:2em;height:0'
+    span.setAttribute('aria-hidden', 'true')
+    return span
+  }
+  ignoreEvent() { return true }
+}
+
+const indentWidgetDeco = Decoration.widget({ widget: new IndentWidget(), side: -1 })
 
 function buildParagraphDecos(view: EditorView): DecorationSet {
   const builder = new RangeSetBuilder<Decoration>()
@@ -452,13 +465,10 @@ function buildParagraphDecos(view: EditorView): DecorationSet {
     const text = line.text
     const isHeading = /^#{1,6} /.test(text)
     const isHR = /^---+$/.test(text.trim())
-    const isSpecial = /^[-*>]/.test(text)  // list / blockquote / blank
+    const isSpecial = /^[-*>]/.test(text)  // list / blockquote
 
-    // Only suppress indent for structural lines — never for regular text.
-    // This ensures no text line ever changes its decoration status based on
-    // neighboring lines, eliminating cascade-induced layout shifts.
-    if (isHeading || isHR || isSpecial) {
-      builder.add(line.from, line.from, noIndentDeco)
+    if (!isHeading && !isHR && !isSpecial) {
+      builder.add(line.from, line.from, indentWidgetDeco)
     }
   }
   return builder.finish()
@@ -504,8 +514,6 @@ function buildTheme(fontSize: number, dark: boolean, focusMode = false): ReturnT
     '.cm-cursor': { borderLeftColor: 'var(--accent)' },
     '.cm-selectionBackground': { backgroundColor: 'var(--active-bg)' },
     '&.cm-focused .cm-selectionBackground': { backgroundColor: 'var(--active-bg)' },
-    '.cm-line': { textIndent: '2em' },
-    '.cm-no-indent': { textIndent: '0' },
     '.cm-gutters': { display: 'none' },
     '.cm-activeLine': { backgroundColor: 'transparent' },
     '.cm-activeLineGutter': { backgroundColor: 'transparent' },
