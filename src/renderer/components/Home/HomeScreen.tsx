@@ -85,17 +85,21 @@ function pickExcerpt(files: { relativePath: string; content: string }[]): Excerp
   const candidates: { text: string; source: string }[] = []
   for (const file of files) {
     const name = file.relativePath.split('/').pop()?.replace(/\.md$/, '') ?? file.relativePath
-    const paragraphs = file.content.split(/\n\n+/).filter(p => {
-      const clean = p.replace(/^#{1,6}\s.*/, '').trim()
+    const blocks = file.content.split(/\n{2,}/)
+    for (const block of blocks) {
+      const clean = block.replace(/^#{1,6}\s[^\n]*/gm, '').trim()
+      if (clean.startsWith('>') || clean.startsWith('#')) continue
       const words = countWords(clean)
-      return words >= 20 && words <= 80 && !clean.startsWith('#') && !clean.startsWith('>')
-    })
-    for (const p of paragraphs) {
-      candidates.push({ text: p.trim(), source: name })
+      if (words < 15) continue
+      const wordList = clean.split(/\s+/)
+      const text = wordList.length > 60 ? wordList.slice(0, 60).join(' ') + '…' : clean
+      candidates.push({ text, source: name })
     }
   }
   if (candidates.length === 0) return null
-  return candidates[Math.floor(Math.random() * candidates.length)]
+  const today = new Date()
+  const seed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate()
+  return candidates[seed % candidates.length]
 }
 
 function relativeTime(ts: number): string {
