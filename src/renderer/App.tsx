@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { FileTree } from './components/FileTree/FileTree'
+import { currentEditorView } from './components/Editor/MarkdownEditor'
 import { MarkdownEditor } from './components/Editor/MarkdownEditor'
 import { DocumentOutline } from './components/Editor/DocumentOutline'
 import { ChatPanel } from './components/AIChat/ChatPanel'
@@ -16,8 +17,24 @@ export default function App(): JSX.Element {
     setFileTree, activeFilePath, isDirty, markSaved, activeFileContent, theme, toggleTheme,
     loadSession, revisionPanelOpen, toggleRevisionPanel, fontSize, setFontSize,
     openProjectSearch, clearActiveFile, initPrefs, focusMode, toggleFocusMode,
-    showHome, goHome
+    showHome, goHome, setActiveFile
   } = useEditorStore()
+
+  const handleOpenStoryBible = async (): Promise<void> => {
+    try {
+      const { path, content } = await window.api.openStoryBible()
+      setActiveFile(path, content)
+      if (path === activeFilePath) {
+        const view = currentEditorView
+        if (view) {
+          view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: content } })
+          markSaved()
+        }
+      }
+    } catch (err) {
+      console.error('[App] openStoryBible failed:', err)
+    }
+  }
   const [sidebarOpen, setSidebarOpen] = useState(
     () => localStorage.getItem('sidebarOpen') !== 'false'
   )
@@ -175,14 +192,22 @@ export default function App(): JSX.Element {
         </div>
       </div>
       <aside className="sidebar">
-        <button
-          className={`sidebar-home-btn${showHome ? ' active' : ''}`}
-          onClick={goHome}
-          title="Home"
-        >
-          <span className="sidebar-home-icon">⌂</span>
-          <span className="sidebar-home-label">Home</span>
-        </button>
+        <div className="sidebar-nav">
+          <button
+            className={`sidebar-nav-btn${showHome ? ' active' : ''}`}
+            onClick={goHome}
+            title="Home"
+          >
+            <span className="sidebar-nav-icon">⌂</span>
+          </button>
+          <button
+            className="sidebar-nav-btn"
+            onClick={handleOpenStoryBible}
+            title="Open Story Bible"
+          >
+            <span className="sidebar-nav-icon">📖</span>
+          </button>
+        </div>
         <FileTree />
       </aside>
       <main className="editor-area" style={{ position: 'relative' }}>
