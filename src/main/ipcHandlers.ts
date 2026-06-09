@@ -2,9 +2,10 @@ import { ipcMain, dialog, BrowserWindow } from 'electron'
 import { readFileSync, writeFileSync, unlinkSync } from 'fs'
 import { extname, basename, join } from 'path'
 import { tmpdir } from 'os'
-import { listDraftFiles, readMarkdownFile, writeMarkdownFile, getProjectWordCount, saveOrderFile, readSession, writeSession, saveRevision, listRevisions, loadRevision, deleteRevision, renameFileOrDir, deleteFileOrDir, createMarkdownFile, createSubdirectory, moveFileOrDir, readStoryBibleFile, openStoryBibleFile, writeStoryBibleFile, searchAcrossFiles, replaceInFiles, readAllDraftFiles, readProjectConfig, writeProjectConfig, PROJECT_CONFIG_FIELDS } from './fileSystem'
+import { listDraftFiles, readMarkdownFile, writeMarkdownFile, getProjectWordCount, saveOrderFile, readSession, writeSession, saveRevision, listRevisions, loadRevision, deleteRevision, renameFileOrDir, deleteFileOrDir, createMarkdownFile, createSubdirectory, moveFileOrDir, readStoryBibleFile, openStoryBibleFile, writeStoryBibleFile, searchAcrossFiles, replaceInFiles, readAllDraftFiles, readProjectConfig, writeProjectConfig, PROJECT_CONFIG_FIELDS, readTelemetry } from './fileSystem'
 import type { SearchOptions, ProjectConfig } from './fileSystem'
 import { streamMessage, resetClient } from './aiService'
+import { onWordSnapshot, flushTelemetry } from './telemetry'
 import type { AIPayload, Attachment } from '../renderer/types/editor'
 import { readGlobalConfig, writeGlobalConfig, getProjectTitle, addRecentProject, updateRecentProjectTitle } from './globalConfig'
 import type { GlobalConfig } from './globalConfig'
@@ -139,6 +140,22 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('fs:replace', async (_event, query: string, replacement: string, opts: SearchOptions, filePaths: string[]) => {
     return await replaceInFiles(query, replacement, opts, filePaths)
+  })
+
+  ipcMain.handle('fs:readAllFiles', async () => {
+    return await readAllDraftFiles()
+  })
+
+  ipcMain.handle('telemetry:wordSnapshot', (_event, filePath: string, wordCount: number) => {
+    onWordSnapshot(filePath, wordCount)
+  })
+
+  ipcMain.handle('telemetry:flush', () => {
+    flushTelemetry()
+  })
+
+  ipcMain.handle('telemetry:read', async () => {
+    return await readTelemetry()
   })
 
   ipcMain.handle('ai:streamMessage', async (event, payload: AIPayload) => {

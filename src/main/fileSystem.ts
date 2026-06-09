@@ -6,6 +6,7 @@ import { getDraftRoot } from './globalConfig'
 const hohoffDir = (): string => join(getDraftRoot(), '.hohoff')
 const orderFile = (): string => join(hohoffDir(), 'order.json')
 const sessionFile = (): string => join(hohoffDir(), 'session.json')
+const telemetryFile = (): string => join(hohoffDir(), 'telemetry.json')
 const revisionsDir = (): string => join(hohoffDir(), 'revisions')
 export const getStoryBiblePath = (): string => join(hohoffDir(), 'Story Bible.md')
 
@@ -69,6 +70,36 @@ export async function readSession(): Promise<Record<string, unknown>> {
 export async function writeSession(data: Record<string, unknown>): Promise<void> {
   await mkdir(hohoffDir(), { recursive: true })
   await writeFile(sessionFile(), JSON.stringify(data), 'utf-8')
+}
+
+export interface FileTelemetry {
+  wordsAdded: number
+  wordsRemoved: number
+  netWords: number
+}
+
+export interface CompletedSession {
+  id: string
+  startedAt: number
+  endedAt: number
+  files: Record<string, FileTelemetry>
+}
+
+export interface TelemetryData {
+  sessions: CompletedSession[]
+}
+
+export async function readTelemetry(): Promise<TelemetryData> {
+  try {
+    return JSON.parse(await readFile(telemetryFile(), 'utf-8'))
+  } catch {
+    return { sessions: [] }
+  }
+}
+
+export async function writeTelemetry(data: TelemetryData): Promise<void> {
+  await mkdir(hohoffDir(), { recursive: true })
+  await writeFile(telemetryFile(), JSON.stringify(data), 'utf-8')
 }
 
 export interface ProjectConfig {

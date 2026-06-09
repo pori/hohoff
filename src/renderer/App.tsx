@@ -7,6 +7,7 @@ import { AnalysisToolbar } from './components/Toolbar/AnalysisToolbar'
 import { RevisionPanel } from './components/Revisions/RevisionPanel'
 import { ProjectSearchModal } from './components/Search/ProjectSearchModal'
 import { SettingsDialog } from './components/Settings/SettingsDialog'
+import { HomeScreen } from './components/Home/HomeScreen'
 import { useEditorStore } from './store/editorStore'
 import './styles/app.css'
 
@@ -14,7 +15,8 @@ export default function App(): JSX.Element {
   const {
     setFileTree, activeFilePath, isDirty, markSaved, activeFileContent, theme, toggleTheme,
     loadSession, revisionPanelOpen, toggleRevisionPanel, fontSize, setFontSize,
-    openProjectSearch, clearActiveFile, initPrefs, focusMode, toggleFocusMode
+    openProjectSearch, clearActiveFile, initPrefs, focusMode, toggleFocusMode,
+    showHome, goHome
   } = useEditorStore()
   const [sidebarOpen, setSidebarOpen] = useState(
     () => localStorage.getItem('sidebarOpen') !== 'false'
@@ -173,15 +175,29 @@ export default function App(): JSX.Element {
         </div>
       </div>
       <aside className="sidebar">
+        <button
+          className={`sidebar-home-btn${showHome ? ' active' : ''}`}
+          onClick={goHome}
+          title="Home"
+        >
+          <span className="sidebar-home-icon">⌂</span>
+          <span className="sidebar-home-label">Home</span>
+        </button>
         <FileTree />
       </aside>
       <main className="editor-area" style={{ position: 'relative' }}>
-        <AnalysisToolbar />
-        <div className="editor-body">
-          <DocumentOutline />
-          <MarkdownEditor />
-        </div>
-        {revisionPanelOpen && <RevisionPanel />}
+        {showHome ? (
+          <HomeScreen />
+        ) : (
+          <>
+            <AnalysisToolbar />
+            <div className="editor-body">
+              <DocumentOutline />
+              <MarkdownEditor />
+            </div>
+            {revisionPanelOpen && <RevisionPanel />}
+          </>
+        )}
       </main>
       <aside className="chat-area">
         <ChatPanel />

@@ -77,6 +77,23 @@ export interface RevisionMeta {
   wordCount: number
 }
 
+export interface FileTelemetry {
+  wordsAdded: number
+  wordsRemoved: number
+  netWords: number
+}
+
+export interface TelemetrySession {
+  id: string
+  startedAt: number
+  endedAt: number
+  files: Record<string, FileTelemetry>
+}
+
+export interface TelemetryData {
+  sessions: TelemetrySession[]
+}
+
 export interface SearchMatch {
   lineNumber: number   // 1-based
   lineText: string

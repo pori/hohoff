@@ -103,6 +103,11 @@ interface EditorState {
   scrollEditorToLine: (line: number) => void
   clearPendingScrollToLine: () => void
 
+  // Home screen
+  showHome: boolean
+  goHome: () => void
+  leaveHome: () => void
+
   // Session persistence
   loadSession: () => Promise<void>
 }
@@ -181,6 +186,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       activeFilePath: path,
       activeFileContent: content,
       isDirty: false,
+      showHome: false,
       chatHistory: existing,
       annotations: savedAnnotationState?.annotations.filter(a => !a.applied && !a.dismissed) ?? [],
       analysisMode: savedAnnotationState?.mode ?? 'none'
@@ -653,6 +659,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   scrollEditorToLine: (line) => set({ pendingScrollToLine: line }),
   clearPendingScrollToLine: () => set({ pendingScrollToLine: null }),
 
+  showHome: false,
+  goHome: () => set({ showHome: true }),
+  leaveHome: () => set({ showHome: false }),
+
   loadSession: async () => {
     const api = (window as unknown as { api?: { readSession: () => Promise<Record<string, unknown>>; readFile: (p: string) => Promise<string> } }).api
     if (!api) return
@@ -693,11 +703,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           const content = await api.readFile(data.activeFilePath)
           get().setActiveFile(data.activeFilePath, content)
         } catch {
-          // File may have been moved/deleted — open nothing
+          // File may have been moved/deleted — show home instead
+          set({ showHome: true })
         }
+      } else {
+        set({ showHome: true })
       }
     } catch {
-      // No session yet — start fresh
+      // No session yet — show home
+      set({ showHome: true })
     }
   }
 }))

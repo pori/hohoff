@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { FileNode, AIPayload, RevisionMeta, Attachment, SearchFileResult, GlobalConfig } from '../renderer/types/editor'
+import type { FileNode, AIPayload, RevisionMeta, Attachment, SearchFileResult, GlobalConfig, TelemetryData } from '../renderer/types/editor'
 
 interface SearchOptions {
   caseSensitive: boolean
@@ -124,4 +124,16 @@ contextBridge.exposeInMainWorld('api', {
 
   exportProjectPDF: (): Promise<void> =>
     ipcRenderer.invoke('export:projectPdf'),
+
+  readAllDraftFiles: (): Promise<{ relativePath: string; content: string }[]> =>
+    ipcRenderer.invoke('fs:readAllFiles'),
+
+  trackWordSnapshot: (filePath: string, wordCount: number): Promise<void> =>
+    ipcRenderer.invoke('telemetry:wordSnapshot', filePath, wordCount),
+
+  flushTelemetry: (): Promise<void> =>
+    ipcRenderer.invoke('telemetry:flush'),
+
+  readTelemetry: (): Promise<TelemetryData> =>
+    ipcRenderer.invoke('telemetry:read'),
 })

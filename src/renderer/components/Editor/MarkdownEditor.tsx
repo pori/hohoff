@@ -724,6 +724,19 @@ export function MarkdownEditor(): JSX.Element {
       wordTimer = setTimeout(() => { wordTimer = null; setWordStats(getStats()) }, 150)
     }
 
+    // Debounced telemetry snapshot — fires 5s after the user stops typing
+    let telemetryTimer: ReturnType<typeof setTimeout> | null = null
+    function scheduleTelemetrySnapshot(wordCount: number): void {
+      if (telemetryTimer) clearTimeout(telemetryTimer)
+      telemetryTimer = setTimeout(() => {
+        telemetryTimer = null
+        const { activeFilePath: fp } = useEditorStore.getState()
+        if (!fp) return
+        const api = (window as unknown as { api?: { trackWordSnapshot: (p: string, n: number) => Promise<void> } }).api
+        api?.trackWordSnapshot(fp, wordCount).catch(console.error)
+      }, 5_000)
+    }
+
     const view = new EditorView({
       state: EditorState.create({
         doc: '',
@@ -788,6 +801,7 @@ export function MarkdownEditor(): JSX.Element {
               scheduleSetContent(text)
               const total = countWords(text)
               wordTotalRef.current = total
+              scheduleTelemetrySnapshot(total)
               const head = update.state.selection.main.head
               scheduleWordStats(() => ({
                 atCursor: countWords(update.state.doc.sliceString(0, head)),
@@ -893,6 +907,7 @@ export function MarkdownEditor(): JSX.Element {
       if (scrollTimer) clearTimeout(scrollTimer)
       if (contentTimer) clearTimeout(contentTimer)
       if (wordTimer) clearTimeout(wordTimer)
+      if (telemetryTimer) clearTimeout(telemetryTimer)
       view.destroy()
       viewRef.current = null
       currentEditorView = null
