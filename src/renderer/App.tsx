@@ -44,6 +44,7 @@ export default function App(): JSX.Element {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [isFirstRun, setIsFirstRun] = useState(false)
   const [focusPeek, setFocusPeek] = useState(false)
+  const [projectTitle, setProjectTitle] = useState('')
 
   useEffect(() => {
     if (!focusMode) {
@@ -57,6 +58,7 @@ export default function App(): JSX.Element {
 
   const switchProject = async (newPath: string): Promise<void> => {
     await window.api.writeConfig({ projectPath: newPath })
+    setProjectTitle(newPath.split('/').filter(Boolean).pop() ?? '')
     clearActiveFile()
     const files = await window.api.listFiles()
     setFileTree(files)
@@ -75,6 +77,9 @@ export default function App(): JSX.Element {
       if (!cfg.apiKey || !cfg.projectPath) {
         setIsFirstRun(true)
         setSettingsOpen(true)
+      }
+      if (cfg.projectPath) {
+        setProjectTitle(cfg.projectPath.split('/').filter(Boolean).pop() ?? '')
       }
     }
     init()
@@ -158,7 +163,7 @@ export default function App(): JSX.Element {
       data-peek={focusPeek ? 'on' : 'off'}
     >
       <div className="app-titlebar">
-        <span className="app-titlebar-title">Hohoff Editor</span>
+        <span className="app-titlebar-title">{projectTitle || 'Hohoff Editor'}</span>
         <div className="app-titlebar-right">
           <div className="app-layout-toggle">
             <button
