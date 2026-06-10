@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { ExportDialog } from './components/Export/ExportDialog'
+import type { ExportOptions } from './components/Export/ExportDialog'
 import { FileTree } from './components/FileTree/FileTree'
 import { currentEditorView } from './components/Editor/MarkdownEditor'
 import { MarkdownEditor } from './components/Editor/MarkdownEditor'
@@ -42,6 +44,7 @@ export default function App(): JSX.Element {
     () => localStorage.getItem('chatOpen') !== 'false'
   )
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [exportOpen, setExportOpen] = useState(false)
   const [isFirstRun, setIsFirstRun] = useState(false)
   const [focusPeek, setFocusPeek] = useState(false)
   const [projectTitle, setProjectTitle] = useState('')
@@ -125,7 +128,7 @@ export default function App(): JSX.Element {
           await window.api.exportPDF(activeFileContent, fileName)
         }
       } else if (action === 'exportProjectPDF') {
-        await window.api.exportProjectPDF()
+        setExportOpen(true)
       }
     })
   }, [activeFilePath, isDirty, activeFileContent, fontSize])
@@ -245,6 +248,15 @@ export default function App(): JSX.Element {
             const files = await window.api.listFiles()
             setFileTree(files)
             await loadSession()
+          }}
+        />
+      )}
+      {exportOpen && (
+        <ExportDialog
+          onClose={() => setExportOpen(false)}
+          onExport={async (opts: ExportOptions) => {
+            setExportOpen(false)
+            await window.api.exportProjectPDF(opts)
           }}
         />
       )}

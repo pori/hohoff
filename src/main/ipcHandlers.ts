@@ -368,7 +368,13 @@ export function registerIpcHandlers(): void {
     }
   })
 
-  ipcMain.handle('export:projectPdf', async (event): Promise<void> => {
+  ipcMain.handle('export:projectPdf', async (event, opts: {
+    romanNumerals: boolean
+    includeCover: boolean
+    includeFrontMatter: boolean
+    pageFrom: number | null
+    pageTo: number | null
+  }): Promise<void> => {
     const win = BrowserWindow.fromWebContents(event.sender)
     const projectCfg = await readProjectConfig()
     const projectName = getProjectTitle(projectCfg.projectTitle)
@@ -464,14 +470,33 @@ export function registerIpcHandlers(): void {
     // Each section becomes its own PDF so its title can appear in the running header.
     // isCover=true sections receive no running header (standard manuscript practice).
     interface Section { title: string; bodyHtml: string; css?: string; isCover?: boolean }
-    const sections: Section[] = [
-      { title: '', bodyHtml: coverBodyHtml, css: coverCSS, isCover: true }
-    ]
+    const sections: Section[] = []
+
+    if (opts.includeCover) {
+      sections.push({ title: '', bodyHtml: coverBodyHtml, css: coverCSS, isCover: true })
+    }
+
+    const toRoman = (n: number): string => {
+      const vals = [1000,900,500,400,100,90,50,40,10,9,5,4,1]
+      const syms = ['M','CM','D','CD','C','XC','L','XL','X','IX','V','IV','I']
+      let result = ''
+      for (let i = 0; i < vals.length; i++) {
+        while (n >= vals[i]) { result += syms[i]; n -= vals[i] }
+      }
+      return result
+    }
+
+    // Front matter = docs not inside a subdirectory (no slash in relativePath)
+    // Body chapters = docs inside a Part subdirectory
     let currentPart: string | null = null
+    let chapterIndex = 0
 
     for (const doc of docs) {
       const slashIdx = doc.relativePath.indexOf('/')
       const partName = slashIdx !== -1 ? doc.relativePath.slice(0, slashIdx) : null
+      const isFrontMatter = partName === null
+
+      if (isFrontMatter && !opts.includeFrontMatter) continue
 
       if (partName !== null && partName !== currentPart) {
         currentPart = partName
@@ -482,11 +507,20 @@ export function registerIpcHandlers(): void {
         })
       }
 
-      const chapterTitle = doc.relativePath.split('/').pop()?.replace(/\.md$/, '') ?? doc.relativePath
+      let chapterTitle: string
+      let headerTitle: string
+      if (!isFrontMatter && opts.romanNumerals) {
+        chapterIndex++
+        chapterTitle = toRoman(chapterIndex)
+        headerTitle = toRoman(chapterIndex)
+      } else {
+        chapterTitle = doc.relativePath.split('/').pop()?.replace(/\.md$/, '') ?? doc.relativePath
+        headerTitle = chapterTitle
+      }
       const safeChapterTitle = chapterTitle.replace(/&/g, '&amp;').replace(/</g, '&lt;')
       const contentHtml = await marked(normalize(doc.content))
       sections.push({
-        title: chapterTitle,
+        title: headerTitle,
         bodyHtml: `<div class="chapter"><h2>${safeChapterTitle}</h2>${contentHtml}</div>`
       })
     }
@@ -573,7 +607,27 @@ export function registerIpcHandlers(): void {
       })
     }
 
-    const pdfBytes = await mergedPdf.save()
+    // Apply page range if requested. Page numbers are body-page numbers (cover excluded).
+    // We build a final document containing only the requested pages.
+    let finalPdf = mergedPdf
+    if (opts.pageFrom !== null || opts.pageTo !== null) {
+      const rangeDoc = await PDFDocument.create()
+      const rangePages = mergedPdf.getPages()
+      let bodyNum = 0
+      const indicesToKeep: number[] = []
+      for (let i = 0; i < rangePages.length; i++) {
+        if (!pageOwners[i].isCover) bodyNum++
+        const inRange =
+          (opts.pageFrom === null || bodyNum >= opts.pageFrom) &&
+          (opts.pageTo === null || bodyNum <= opts.pageTo)
+        if (pageOwners[i].isCover || inRange) indicesToKeep.push(i)
+      }
+      const copied = await rangeDoc.copyPages(mergedPdf, indicesToKeep)
+      for (const p of copied) rangeDoc.addPage(p)
+      finalPdf = rangeDoc
+    }
+
+    const pdfBytes = await finalPdf.save()
     writeFileSync(result.filePath, pdfBytes)
   })
 }

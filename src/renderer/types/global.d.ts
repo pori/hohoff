@@ -1,4 +1,5 @@
 import type { FileNode, AIPayload, RevisionMeta, Attachment, SearchFileResult, GlobalConfig } from './editor'
+import type { ExportOptions } from '../components/Export/ExportDialog'
 
 interface SearchOptions {
   caseSensitive: boolean
@@ -38,7 +39,7 @@ declare global {
       writeConfig: (updates: Partial<GlobalConfig>) => Promise<void>
       pickProjectFolder: () => Promise<string | null>
       exportPDF: (content: string, fileName: string) => Promise<void>
-      exportProjectPDF: () => Promise<void>
+      exportProjectPDF: (opts: ExportOptions) => Promise<void>
     }
   }
 }

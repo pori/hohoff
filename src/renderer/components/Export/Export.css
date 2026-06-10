@@ -1,0 +1,52 @@
+.export-dialog {
+  width: 400px;
+}
+
+.export-toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.export-toggle {
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 10px;
+  row-gap: 1px;
+  cursor: pointer;
+  align-items: start;
+}
+
+.export-toggle input[type="checkbox"] {
+  margin-top: 2px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.export-toggle-label {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.export-toggle-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  grid-column: 2;
+}
+
+.export-page-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.export-page-input {
+  width: 80px;
+  flex: none;
+}
+
+.export-page-dash {
+  color: var(--text-muted);
+  font-size: 14px;
+}

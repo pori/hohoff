@@ -43,14 +43,33 @@ function formatWordCount(n: number): string {
   return String(n)
 }
 
-function computeAvgSentenceLength(text: string): number | null {
+interface SentenceStats {
+  avg: number
+  stdDev: number
+  totalSentences: number
+  /** bins[i] = count of sentences with (i+1) words; bins[30] = sentences with 31+ words */
+  bins: number[]
+  outliers: Array<{ text: string; wordCount: number }>
+}
+
+function computeSentenceStats(text: string): SentenceStats | null {
   const sentences = text
     .split(/[.!?]+/)
     .map(s => s.trim())
-    .filter(s => s.length > 0)
+    .filter(s => s.length > 0 && /\w/.test(s))
   if (sentences.length === 0) return null
-  const totalWords = sentences.reduce((sum, s) => sum + countWords(s), 0)
-  return Math.round((totalWords / sentences.length) * 10) / 10
+  const lengths = sentences.map(s => countWords(s))
+  const avg = lengths.reduce((a, b) => a + b, 0) / lengths.length
+  const variance = lengths.reduce((a, b) => a + (b - avg) ** 2, 0) / lengths.length
+  const stdDev = Math.sqrt(variance)
+  const bins = new Array(31).fill(0)
+  const outliers: Array<{ text: string; wordCount: number }> = []
+  for (let i = 0; i < sentences.length; i++) {
+    const wc = lengths[i]
+    bins[Math.min(wc - 1, 30)]++
+    if (wc <= 4 || wc >= 26) outliers.push({ text: sentences[i], wordCount: wc })
+  }
+  return { avg, stdDev, totalSentences: sentences.length, bins, outliers }
 }
 
 export function AnalysisToolbar(): JSX.Element {
@@ -87,6 +106,10 @@ export function AnalysisToolbar(): JSX.Element {
   const analyzeButtonRef = useRef<HTMLButtonElement>(null)
   const analyzeMenuRef = useRef<HTMLDivElement>(null)
 
+  const [statsOpen, setStatsOpen] = useState(false)
+  const statsButtonRef = useRef<HTMLButtonElement>(null)
+  const statsMenuRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
     window.api.getProjectWordCount().then(setProjectWordCount).catch(() => {})
   }, [])
@@ -98,8 +121,8 @@ export function AnalysisToolbar(): JSX.Element {
     }
   }, [isDirty])
 
-  // Close dropdown on file change
-  useEffect(() => { setAnalyzeOpen(false) }, [activeFilePath])
+  // Close dropdowns on file change
+  useEffect(() => { setAnalyzeOpen(false); setStatsOpen(false) }, [activeFilePath])
 
   // Click-outside closes dropdown
   useEffect(() => {
@@ -116,13 +139,28 @@ export function AnalysisToolbar(): JSX.Element {
     return () => document.removeEventListener('mousedown', handler)
   }, [analyzeOpen])
 
-  // Escape closes dropdown
+  // Escape closes dropdowns
   useEffect(() => {
-    if (!analyzeOpen) return
-    const handler = (e: KeyboardEvent): void => { if (e.key === 'Escape') setAnalyzeOpen(false) }
+    if (!analyzeOpen && !statsOpen) return
+    const handler = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') { setAnalyzeOpen(false); setStatsOpen(false) }
+    }
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
-  }, [analyzeOpen])
+  }, [analyzeOpen, statsOpen])
+
+  // Click-outside closes stats popover
+  useEffect(() => {
+    if (!statsOpen) return
+    const handler = (e: MouseEvent): void => {
+      if (
+        !statsButtonRef.current?.contains(e.target as Node) &&
+        !statsMenuRef.current?.contains(e.target as Node)
+      ) setStatsOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [statsOpen])
 
   const hasFile = Boolean(activeFilePath)
   const isStoryBible = activeFilePath?.endsWith('Story Bible.md') ?? false
@@ -230,7 +268,8 @@ export function AnalysisToolbar(): JSX.Element {
   const totalCount = passiveCount + consistencyCount + styleCount + showTellCount + critiqueCount
   const anyActive = Boolean(analysisMode)
   const docWordCount = countWords(activeFileContent)
-  const avgSentenceLen = activeFileContent ? computeAvgSentenceLength(activeFileContent) : null
+  const sentenceStats = activeFileContent ? computeSentenceStats(activeFileContent) : null
+  const avgSentenceLen = sentenceStats ? Math.round(sentenceStats.avg * 10) / 10 : null
 
   return (
     <div className="toolbar">
@@ -386,6 +425,87 @@ export function AnalysisToolbar(): JSX.Element {
           <span className="toolbar-selection-wordcount" title={`${selectionWordCount} words selected`}>
             {formatWordCount(selectionWordCount)} sel
           </span>
+        )}
+        {activeFilePath && sentenceStats && (
+          <>
+            <button
+              ref={statsButtonRef}
+              className={`toolbar-btn toolbar-btn-stats${statsOpen ? ' active' : ''}`}
+              onClick={() => setStatsOpen(v => !v)}
+              title="Sentence length histogram"
+            >
+              ≈
+            </button>
+            {statsOpen && statsButtonRef.current && createPortal(
+              (() => {
+                const rect = statsButtonRef.current!.getBoundingClientRect()
+                const maxBin = Math.max(...sentenceStats.bins, 1)
+                const CHART_H = 60
+                return (
+                  <div
+                    ref={statsMenuRef}
+                    className="toolbar-stats-popover"
+                    style={{ top: rect.bottom + 4, right: window.innerWidth - rect.right }}
+                  >
+                    <div className="toolbar-stats-header">
+                      <span className="toolbar-stats-title">Sentence Lengths</span>
+                      <button className="toolbar-stats-close" onClick={() => setStatsOpen(false)}>×</button>
+                    </div>
+                    <div className="toolbar-stats-summary">
+                      <span>avg <strong>{Math.round(sentenceStats.avg * 10) / 10}w</strong></span>
+                      <span>σ <strong>{Math.round(sentenceStats.stdDev * 10) / 10}</strong></span>
+                      <span><strong>{sentenceStats.totalSentences}</strong> sentences</span>
+                    </div>
+                    <div className="toolbar-stats-chart" style={{ height: CHART_H }}>
+                      {sentenceStats.bins.map((count, i) => {
+                        const wordCount = i + 1
+                        const isTarget = wordCount >= 11 && wordCount <= 16
+                        const barH = count === 0 ? 0 : Math.max(2, Math.round((count / maxBin) * CHART_H))
+                        return (
+                          <div
+                            key={i}
+                            className={`toolbar-stats-bar${isTarget ? ' target' : ''}`}
+                            style={{ height: barH }}
+                            title={`${wordCount === 31 ? '31+' : wordCount}w: ${count} sentence${count !== 1 ? 's' : ''}`}
+                          />
+                        )
+                      })}
+                    </div>
+                    <div className="toolbar-stats-axis">
+                      <span>1</span>
+                      <span>8</span>
+                      <span className="toolbar-stats-axis-target">11–16 ●</span>
+                      <span>22</span>
+                      <span>31+</span>
+                    </div>
+                    {sentenceStats.outliers.length > 0 && (
+                      <div className="toolbar-stats-outliers">
+                        <div className="toolbar-stats-outliers-title">
+                          Flagged (≤4 or ≥26 words)
+                        </div>
+                        <div className="toolbar-stats-outliers-list">
+                          {sentenceStats.outliers.slice(0, 8).map((o, i) => (
+                            <div key={i} className="toolbar-stats-outlier">
+                              <span className="toolbar-stats-outlier-wc">{o.wordCount}w</span>
+                              <span className={`toolbar-stats-outlier-text${o.wordCount <= 4 ? ' short' : ' long'}`}>
+                                {o.text.length > 55 ? o.text.slice(0, 55) + '…' : o.text}
+                              </span>
+                            </div>
+                          ))}
+                          {sentenceStats.outliers.length > 8 && (
+                            <div className="toolbar-stats-outlier-more">
+                              +{sentenceStats.outliers.length - 8} more
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })(),
+              document.body
+            )}
+          </>
         )}
         {activeFilePath && (
           <span

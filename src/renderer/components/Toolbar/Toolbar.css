@@ -200,6 +200,165 @@
   flex-shrink: 0;
 }
 
+/* ── Stats button ────────────────────────────────────────────────── */
+.toolbar-btn-stats {
+  padding: 4px 7px;
+  font-size: 13px;
+  line-height: 1;
+  flex-shrink: 0;
+  letter-spacing: -0.02em;
+}
+
+/* ── Sentence stats popover ──────────────────────────────────────── */
+.toolbar-stats-popover {
+  position: fixed;
+  z-index: 1000;
+  background: var(--panel-bg, var(--toolbar-bg));
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px 12px;
+  width: 300px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+}
+
+.toolbar-stats-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.toolbar-stats-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.toolbar-stats-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0;
+  line-height: 1;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.toolbar-stats-close:hover {
+  opacity: 1;
+}
+
+.toolbar-stats-summary {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+  display: flex;
+  gap: 16px;
+}
+
+.toolbar-stats-summary strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.toolbar-stats-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
+  margin-bottom: 5px;
+}
+
+.toolbar-stats-bar {
+  flex: 1;
+  min-height: 0;
+  border-radius: 1px 1px 0 0;
+  background: var(--text-muted);
+  opacity: 0.3;
+  transition: opacity 0.1s;
+  cursor: default;
+}
+
+.toolbar-stats-bar.target {
+  background: var(--accent);
+  opacity: 0.65;
+}
+
+.toolbar-stats-bar:hover {
+  opacity: 0.9 !important;
+}
+
+.toolbar-stats-axis {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: var(--text-muted);
+  opacity: 0.55;
+  margin-bottom: 12px;
+}
+
+.toolbar-stats-axis-target {
+  color: var(--accent);
+  opacity: 1;
+}
+
+.toolbar-stats-outliers {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.toolbar-stats-outliers-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 7px;
+}
+
+.toolbar-stats-outliers-list {
+  max-height: 140px;
+  overflow-y: auto;
+}
+
+.toolbar-stats-outlier {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 2px 0;
+}
+
+.toolbar-stats-outlier-wc {
+  font-size: 10px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  min-width: 22px;
+}
+
+.toolbar-stats-outlier-text {
+  font-size: 11px;
+  font-family: var(--font-serif);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+}
+
+.toolbar-stats-outlier-text.short {
+  opacity: 0.6;
+}
+
+.toolbar-stats-outlier-more {
+  font-size: 10px;
+  color: var(--text-muted);
+  padding: 3px 0;
+  opacity: 0.6;
+}
+
 /* ── Story Bible toolbar ─────────────────────────────────────────── */
 .toolbar-bible-label {
   font-size: 9px;
