@@ -42,7 +42,7 @@
 }
 
 .export-page-input {
-  width: 80px;
+  width: 80px !important;
   flex: none;
 }
 
