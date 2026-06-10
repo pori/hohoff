@@ -235,9 +235,7 @@ export default function App(): JSX.Element {
       <aside className="chat-area">
         <ChatPanel />
       </aside>
-      {focusMode && (
-        <button className="focus-exit-btn" onClick={toggleFocusMode} title="Exit focus mode (Esc)">✕</button>
-      )}
+
       <ProjectSearchModal />
       {settingsOpen && (
         <SettingsDialog
