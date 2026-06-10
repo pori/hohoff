@@ -370,6 +370,7 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('export:projectPdf', async (event, opts: {
     romanNumerals: boolean
+    showChapterTitle: boolean
     includeCover: boolean
     includeFrontMatter: boolean
     pageFrom: number | null
@@ -507,21 +508,35 @@ export function registerIpcHandlers(): void {
         })
       }
 
-      let chapterTitle: string
+      const fileName = doc.relativePath.split('/').pop()?.replace(/\.md$/, '') ?? doc.relativePath
       let headerTitle: string
-      if (!isFrontMatter && opts.romanNumerals) {
+      let headingHtml: string
+      if (!isFrontMatter) {
         chapterIndex++
-        chapterTitle = toRoman(chapterIndex)
-        headerTitle = toRoman(chapterIndex)
+        const numeral = opts.romanNumerals ? toRoman(chapterIndex) : null
+        const title = opts.showChapterTitle ? fileName : null
+        const safe = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        if (numeral && title) {
+          headingHtml = `<h2>${safe(numeral)}</h2><h3>${safe(title)}</h3>`
+          headerTitle = `${numeral} — ${title}`
+        } else if (numeral) {
+          headingHtml = `<h2>${safe(numeral)}</h2>`
+          headerTitle = numeral
+        } else if (title) {
+          headingHtml = `<h2>${safe(title)}</h2>`
+          headerTitle = title
+        } else {
+          headingHtml = ''
+          headerTitle = fileName
+        }
       } else {
-        chapterTitle = doc.relativePath.split('/').pop()?.replace(/\.md$/, '') ?? doc.relativePath
-        headerTitle = chapterTitle
+        headingHtml = `<h2>${fileName.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</h2>`
+        headerTitle = fileName
       }
-      const safeChapterTitle = chapterTitle.replace(/&/g, '&amp;').replace(/</g, '&lt;')
       const contentHtml = await marked(normalize(doc.content))
       sections.push({
         title: headerTitle,
-        bodyHtml: `<div class="chapter"><h2>${safeChapterTitle}</h2>${contentHtml}</div>`
+        bodyHtml: `<div class="chapter">${headingHtml}${contentHtml}</div>`
       })
     }
 

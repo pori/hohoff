@@ -3,10 +3,21 @@ import './Export.css'
 
 export interface ExportOptions {
   romanNumerals: boolean
+  showChapterTitle: boolean
   includeCover: boolean
   includeFrontMatter: boolean
   pageFrom: number | null
   pageTo: number | null
+}
+
+const STORAGE_KEY = 'exportDialogPrefs'
+
+function loadPrefs(): Pick<ExportOptions, 'romanNumerals' | 'showChapterTitle' | 'includeCover' | 'includeFrontMatter'> {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (raw) return JSON.parse(raw)
+  } catch { /* ignore */ }
+  return { romanNumerals: true, showChapterTitle: false, includeCover: true, includeFrontMatter: true }
 }
 
 interface Props {
@@ -15,9 +26,11 @@ interface Props {
 }
 
 export function ExportDialog({ onClose, onExport }: Props): JSX.Element {
-  const [romanNumerals, setRomanNumerals] = useState(true)
-  const [includeCover, setIncludeCover] = useState(true)
-  const [includeFrontMatter, setIncludeFrontMatter] = useState(true)
+  const prefs = loadPrefs()
+  const [romanNumerals, setRomanNumerals] = useState(prefs.romanNumerals)
+  const [showChapterTitle, setShowChapterTitle] = useState(prefs.showChapterTitle)
+  const [includeCover, setIncludeCover] = useState(prefs.includeCover)
+  const [includeFrontMatter, setIncludeFrontMatter] = useState(prefs.includeFrontMatter)
   const [pageFrom, setPageFrom] = useState('')
   const [pageTo, setPageTo] = useState('')
   const overlayRef = useRef<HTMLDivElement>(null)
@@ -34,10 +47,15 @@ export function ExportDialog({ onClose, onExport }: Props): JSX.Element {
     if (e.target === overlayRef.current) onClose()
   }
 
+  const savePrefs = (patch: Partial<typeof prefs>): void => {
+    const next = { romanNumerals, showChapterTitle, includeCover, includeFrontMatter, ...patch }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+  }
+
   const handleExport = (): void => {
     const from = pageFrom.trim() ? parseInt(pageFrom, 10) : null
     const to = pageTo.trim() ? parseInt(pageTo, 10) : null
-    onExport({ romanNumerals, includeCover, includeFrontMatter, pageFrom: from, pageTo: to })
+    onExport({ romanNumerals, showChapterTitle, includeCover, includeFrontMatter, pageFrom: from, pageTo: to })
   }
 
   const pageRangeValid = (): boolean => {
@@ -63,17 +81,27 @@ export function ExportDialog({ onClose, onExport }: Props): JSX.Element {
               <input
                 type="checkbox"
                 checked={romanNumerals}
-                onChange={e => setRomanNumerals(e.target.checked)}
+                onChange={e => { setRomanNumerals(e.target.checked); savePrefs({ romanNumerals: e.target.checked }) }}
               />
-              <span className="export-toggle-label">Roman numeral chapter titles</span>
-              <span className="export-toggle-hint">I, II, III… instead of file names</span>
+              <span className="export-toggle-label">Roman numeral chapter numbers</span>
+              <span className="export-toggle-hint">I, II, III… before the chapter heading</span>
+            </label>
+
+            <label className="export-toggle">
+              <input
+                type="checkbox"
+                checked={showChapterTitle}
+                onChange={e => { setShowChapterTitle(e.target.checked); savePrefs({ showChapterTitle: e.target.checked }) }}
+              />
+              <span className="export-toggle-label">Show chapter title</span>
+              <span className="export-toggle-hint">File name as the chapter heading</span>
             </label>
 
             <label className="export-toggle">
               <input
                 type="checkbox"
                 checked={includeCover}
-                onChange={e => setIncludeCover(e.target.checked)}
+                onChange={e => { setIncludeCover(e.target.checked); savePrefs({ includeCover: e.target.checked }) }}
               />
               <span className="export-toggle-label">Include cover page</span>
               <span className="export-toggle-hint">Author contact block and word count</span>
@@ -83,7 +111,7 @@ export function ExportDialog({ onClose, onExport }: Props): JSX.Element {
               <input
                 type="checkbox"
                 checked={includeFrontMatter}
-                onChange={e => setIncludeFrontMatter(e.target.checked)}
+                onChange={e => { setIncludeFrontMatter(e.target.checked); savePrefs({ includeFrontMatter: e.target.checked }) }}
               />
               <span className="export-toggle-label">Include front &amp; back matter</span>
               <span className="export-toggle-hint">Prologue, Content Warning, Epilogue</span>
