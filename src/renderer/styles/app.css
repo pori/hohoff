@@ -7,7 +7,20 @@
   transition: grid-template-columns 0.25s ease, grid-template-rows 0.25s ease;
 }
 
+.app-layout[data-sidebar='closed'] {
+  grid-template-columns: 0 1fr 340px;
+}
+
+.app-layout[data-chat='closed'] {
+  grid-template-columns: 220px 1fr 0;
+}
+
+.app-layout[data-sidebar='closed'][data-chat='closed'] {
+  grid-template-columns: 0 1fr 0;
+}
+
 /* ─── Focus / distraction-free mode ───────────────────────────── */
+/* Declared after sidebar/chat rules so it wins at equal specificity */
 .app-layout[data-focus='on'] {
   grid-template-columns: 0 1fr 0;
   grid-template-rows: 0 100vh;
@@ -41,40 +54,6 @@
 .app-layout[data-focus='on'][data-peek='on'] .app-titlebar,
 .app-layout[data-focus='on'][data-peek='on'] .toolbar {
   transform: translateY(0);
-}
-
-.focus-exit-btn {
-  position: fixed;
-  top: 10px;
-  right: 14px;
-  z-index: 9999;
-  background: none;
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  font-size: 13px;
-  padding: 3px 7px;
-  border-radius: 4px;
-  cursor: pointer;
-  opacity: 0.12;
-  transition: opacity 0.2s;
-  -webkit-app-region: no-drag;
-}
-
-.focus-exit-btn:hover {
-  opacity: 0.6;
-  color: var(--text-primary);
-}
-
-.app-layout[data-sidebar='closed'] {
-  grid-template-columns: 0 1fr 340px;
-}
-
-.app-layout[data-chat='closed'] {
-  grid-template-columns: 220px 1fr 0;
-}
-
-.app-layout[data-sidebar='closed'][data-chat='closed'] {
-  grid-template-columns: 0 1fr 0;
 }
 
 .app-titlebar {
