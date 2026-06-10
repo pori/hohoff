@@ -171,10 +171,7 @@ export function HomeScreen(): JSX.Element {
               <span className="home-stat-value">{stats.streak > 0 ? stats.streak : '—'}</span>
               <span className="home-stat-label">{stats.streak === 1 ? 'day streak' : 'day streak'}</span>
             </div>
-            <div className="home-stat">
-              <span className="home-stat-value">{stats.avgWpm > 0 ? stats.avgWpm : '—'}</span>
-              <span className="home-stat-label">avg wpm</span>
-            </div>
+
           </div>
         )}
 
