@@ -1,6 +1,6 @@
 {
   "name": "hohoff-editor",
-  "version": "1.17.0",
+  "version": "1.17.1",
   "description": "Novel editor for Hohoff",
   "main": "out/main/index.js",
   "scripts": {
