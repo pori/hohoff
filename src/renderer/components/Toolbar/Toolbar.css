@@ -359,6 +359,78 @@
   opacity: 0.6;
 }
 
+/* ── Paragraph rhythm popover ────────────────────────────────────── */
+.toolbar-rhythm-popover {
+  position: fixed;
+  z-index: 1000;
+  background: var(--panel-bg, var(--toolbar-bg));
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px 12px;
+  width: 260px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+}
+
+.toolbar-rhythm-list {
+  max-height: 280px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 10px;
+  padding-right: 2px;
+}
+
+.toolbar-rhythm-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  cursor: default;
+}
+
+.toolbar-rhythm-bar {
+  height: 8px;
+  border-radius: 2px;
+  opacity: 0.75;
+  flex-shrink: 0;
+  transition: opacity 0.1s;
+}
+
+.toolbar-rhythm-row:hover .toolbar-rhythm-bar {
+  opacity: 1;
+}
+
+.toolbar-rhythm-count {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+  flex-shrink: 0;
+}
+
+.toolbar-rhythm-legend {
+  display: flex;
+  gap: 6px;
+  border-top: 1px solid var(--border);
+  padding-top: 9px;
+  flex-wrap: wrap;
+}
+
+.toolbar-rhythm-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 9px;
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.toolbar-rhythm-legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  opacity: 0.75;
+}
+
 /* ── Story Bible toolbar ─────────────────────────────────────────── */
 .toolbar-bible-label {
   font-size: 9px;

@@ -43,6 +43,41 @@ function formatWordCount(n: number): string {
   return String(n)
 }
 
+interface ParagraphInfo {
+  text: string
+  sentences: number
+  words: number
+}
+
+function computeParagraphRhythm(text: string): ParagraphInfo[] {
+  const blocks = text.split(/\n+/)
+  const result: ParagraphInfo[] = []
+  for (const block of blocks) {
+    const trimmed = block.trim()
+    if (!trimmed || !/\w/.test(trimmed)) continue
+    if (/^#{1,6}\s/.test(trimmed) || /^-{3,}$/.test(trimmed) || /^={3,}$/.test(trimmed)) continue
+    const words = countWords(trimmed)
+    if (words < 3) continue
+    const sentences = trimmed
+      .split(/[.!?]+/)
+      .map(s => s.trim())
+      .filter(s => s.length > 0 && /\w/.test(s)).length
+    result.push({ text: trimmed, sentences, words })
+  }
+  return result
+}
+
+function sentenceCountColor(n: number): string {
+  if (n === 1) return '#5b8dd9'
+  if (n === 2) return '#6db8a0'
+  if (n === 3) return '#7dc76e'
+  if (n === 4) return '#b5c45a'
+  if (n === 5) return '#d4a83a'
+  if (n === 6) return '#d47830'
+  if (n === 7) return '#c45040'
+  return '#b03030'
+}
+
 interface SentenceStats {
   avg: number
   stdDev: number
@@ -110,6 +145,10 @@ export function AnalysisToolbar(): JSX.Element {
   const statsButtonRef = useRef<HTMLButtonElement>(null)
   const statsMenuRef = useRef<HTMLDivElement>(null)
 
+  const [rhythmOpen, setRhythmOpen] = useState(false)
+  const rhythmButtonRef = useRef<HTMLButtonElement>(null)
+  const rhythmMenuRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
     window.api.getProjectWordCount().then(setProjectWordCount).catch(() => {})
   }, [])
@@ -122,7 +161,7 @@ export function AnalysisToolbar(): JSX.Element {
   }, [isDirty])
 
   // Close dropdowns on file change
-  useEffect(() => { setAnalyzeOpen(false); setStatsOpen(false) }, [activeFilePath])
+  useEffect(() => { setAnalyzeOpen(false); setStatsOpen(false); setRhythmOpen(false) }, [activeFilePath])
 
   // Click-outside closes dropdown
   useEffect(() => {
@@ -141,13 +180,26 @@ export function AnalysisToolbar(): JSX.Element {
 
   // Escape closes dropdowns
   useEffect(() => {
-    if (!analyzeOpen && !statsOpen) return
+    if (!analyzeOpen && !statsOpen && !rhythmOpen) return
     const handler = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') { setAnalyzeOpen(false); setStatsOpen(false) }
+      if (e.key === 'Escape') { setAnalyzeOpen(false); setStatsOpen(false); setRhythmOpen(false) }
     }
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
-  }, [analyzeOpen, statsOpen])
+  }, [analyzeOpen, statsOpen, rhythmOpen])
+
+  // Click-outside closes rhythm popover
+  useEffect(() => {
+    if (!rhythmOpen) return
+    const handler = (e: MouseEvent): void => {
+      if (
+        !rhythmButtonRef.current?.contains(e.target as Node) &&
+        !rhythmMenuRef.current?.contains(e.target as Node)
+      ) setRhythmOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [rhythmOpen])
 
   // Click-outside closes stats popover
   useEffect(() => {
@@ -270,6 +322,8 @@ export function AnalysisToolbar(): JSX.Element {
   const docWordCount = countWords(activeFileContent)
   const sentenceStats = activeFileContent ? computeSentenceStats(activeFileContent) : null
   const avgSentenceLen = sentenceStats ? Math.round(sentenceStats.avg * 10) / 10 : null
+  const paragraphRhythm = activeFileContent ? computeParagraphRhythm(activeFileContent) : []
+  const maxParaWords = paragraphRhythm.length > 0 ? Math.max(...paragraphRhythm.map(p => p.words)) : 1
 
   return (
     <div className="toolbar">
@@ -426,6 +480,69 @@ export function AnalysisToolbar(): JSX.Element {
             {formatWordCount(selectionWordCount)} sel
           </span>
         )}
+        {activeFilePath && paragraphRhythm.length > 0 && (
+          <>
+            <button
+              ref={rhythmButtonRef}
+              className={`toolbar-btn toolbar-btn-outline${rhythmOpen ? ' active' : ''}`}
+              onClick={() => setRhythmOpen(v => !v)}
+              title="Paragraph rhythm — sentence count per paragraph"
+            >
+              ∿
+            </button>
+            {rhythmOpen && rhythmButtonRef.current && createPortal(
+              (() => {
+                const rect = rhythmButtonRef.current!.getBoundingClientRect()
+                return (
+                  <div
+                    ref={rhythmMenuRef}
+                    className="toolbar-rhythm-popover"
+                    style={{ top: rect.bottom + 4, right: window.innerWidth - rect.right }}
+                  >
+                    <div className="toolbar-stats-header">
+                      <span className="toolbar-stats-title">Paragraph Rhythm</span>
+                      <button className="toolbar-stats-close" onClick={() => setRhythmOpen(false)}>×</button>
+                    </div>
+                    <div className="toolbar-stats-summary">
+                      <span><strong>{paragraphRhythm.length}</strong> paragraphs</span>
+                      <span>avg <strong>{Math.round(paragraphRhythm.reduce((s, p) => s + p.sentences, 0) / paragraphRhythm.length * 10) / 10}</strong> sentences</span>
+                    </div>
+                    <div className="toolbar-rhythm-list">
+                      {paragraphRhythm.map((p, i) => {
+                        const barW = Math.max(12, Math.round((p.words / maxParaWords) * 180))
+                        const color = sentenceCountColor(p.sentences)
+                        const preview = p.text.length > 80 ? p.text.slice(0, 80) + '…' : p.text
+                        return (
+                          <div
+                            key={i}
+                            className="toolbar-rhythm-row"
+                            title={`${p.sentences} sentence${p.sentences !== 1 ? 's' : ''} · ${p.words} words\n${preview}`}
+                          >
+                            <div
+                              className="toolbar-rhythm-bar"
+                              style={{ width: barW, background: color }}
+                            />
+                            <span className="toolbar-rhythm-count" style={{ color }}>{p.sentences}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                    <div className="toolbar-rhythm-legend">
+                      {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
+                        <div key={n} className="toolbar-rhythm-legend-item" title={`${n}${n === 8 ? '+' : ''} sentence${n !== 1 ? 's' : ''}`}>
+                          <div className="toolbar-rhythm-legend-swatch" style={{ background: sentenceCountColor(n) }} />
+                          <span>{n}{n === 8 ? '+' : ''}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })(),
+              document.body
+            )}
+          </>
+        )}
+
         {activeFilePath && sentenceStats && (
           <>
             <button
