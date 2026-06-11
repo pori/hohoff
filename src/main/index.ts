@@ -2,6 +2,7 @@ import { app, BrowserWindow, shell, nativeImage, Menu, dialog } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { registerIpcHandlers, setOnProjectChanged } from './ipcHandlers'
+import { flushTelemetry } from './telemetry'
 import { getDraftRoot, getRecentProjects, writeGlobalConfig } from './globalConfig'
 
 app.setName('Hohoff')
@@ -288,6 +289,11 @@ app.whenReady().then(() => {
       createWindow()
     }
   })
+})
+
+app.on('before-quit', (event) => {
+  event.preventDefault()
+  flushTelemetry().then(() => app.exit(0)).catch(() => app.exit(0))
 })
 
 app.on('window-all-closed', () => {

@@ -24,8 +24,8 @@ async function persistSession(session: CompletedSession): Promise<void> {
   await writeTelemetry(data)
 }
 
-function endSession(): void {
-  if (!active) return
+function endSession(): Promise<void> {
+  if (!active) return Promise.resolve()
   const endedAt = Date.now()
   const files: CompletedSession['files'] = {}
   for (const [path, snap] of Object.entries(active.files)) {
@@ -38,7 +38,7 @@ function endSession(): void {
   }
   const session: CompletedSession = { id: active.id, startedAt: active.startedAt, endedAt, files }
   active = null
-  persistSession(session).catch(console.error)
+  return persistSession(session)
 }
 
 export function onWordSnapshot(filePath: string, wordCount: number): void {
@@ -58,10 +58,10 @@ export function onWordSnapshot(filePath: string, wordCount: number): void {
   }
 
   if (active.idleTimer) clearTimeout(active.idleTimer)
-  active.idleTimer = setTimeout(endSession, IDLE_MS)
+  active.idleTimer = setTimeout(() => { endSession().catch(console.error) }, IDLE_MS)
 }
 
-export function flushTelemetry(): void {
+export function flushTelemetry(): Promise<void> {
   if (active?.idleTimer) clearTimeout(active.idleTimer)
-  endSession()
+  return endSession()
 }
