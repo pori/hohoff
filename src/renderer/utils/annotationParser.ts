@@ -83,6 +83,9 @@ function deduplicateOverlapping(annotations: TextAnnotation[]): TextAnnotation[]
 
 function classifyType(contextBefore: string): AnnotationType {
   if (contextBefore.includes('passive')) return 'passive_voice'
+  if (contextBefore.includes('past progressive') || contextBefore.includes('past_progressive')) return 'past_progressive'
+  if (contextBefore.includes('weak verb') || contextBefore.includes('weak_verb')) return 'weak_verbs'
+  if (contextBefore.includes('clich')) return 'cliches'
   if (
     contextBefore.includes('consistency') ||
     contextBefore.includes('timeline') ||

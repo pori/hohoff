@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useEditorStore } from '../../store/editorStore'
 import { detectPassiveVoice } from '../../utils/passiveVoice'
+import { detectPastProgressive } from '../../utils/pastProgressive'
 import { parseAnnotationsFromAIResponse } from '../../utils/annotationParser'
 import { tooltipAnalysisCache } from '../Editor/MarkdownEditor'
 import '../FileTree/ContextMenu.css'
@@ -256,7 +257,15 @@ export function AnalysisToolbar(): JSX.Element {
     setAnalysisMode('passive_voice')
   }
 
-  const runAIAnalysis = async (mode: 'consistency' | 'style' | 'show_tell' | 'critique'): Promise<void> => {
+  const runPastProgressive = (): void => {
+    if (!hasFile) return
+    const found = detectPastProgressive(activeFileContent)
+    const existing = useEditorStore.getState().annotations.filter((a) => a.type !== 'past_progressive')
+    setAnnotations([...existing, ...found])
+    setAnalysisMode('past_progressive')
+  }
+
+  const runAIAnalysis = async (mode: 'consistency' | 'style' | 'show_tell' | 'critique' | 'weak_verbs' | 'cliches' | 'past_progressive'): Promise<void> => {
     if (!activeFilePath || isAILoading) return
 
     setAnalysisMode(mode)
@@ -269,7 +278,13 @@ export function AnalysisToolbar(): JSX.Element {
           ? 'Please analyze the style and pacing of this chapter and suggest improvements.'
           : mode === 'show_tell'
             ? 'Please identify every passage in this chapter where I am telling rather than showing.'
-            : 'Please give me an honest critique of this chapter.'
+            : mode === 'weak_verbs'
+              ? 'Please identify sentences in this chapter that use weak verbs (was, were, had, got, seemed, appeared, looked, felt) as the main predicate.'
+              : mode === 'cliches'
+                ? 'Please identify every cliché and overused phrase in this chapter.'
+                : mode === 'past_progressive'
+                  ? 'Please identify every past progressive construction (was/were + verb-ing) in this chapter that would be stronger in simple past.'
+                  : 'Please give me an honest critique of this chapter.'
 
     addUserMessage(prompt)
     startAssistantMessage()
@@ -295,9 +310,13 @@ export function AnalysisToolbar(): JSX.Element {
       const currentHistory = useEditorStore.getState().chatHistory
       const lastMsg = currentHistory[currentHistory.length - 1]
       if (lastMsg?.role === 'assistant' && lastMsg.content.length > 0) {
-        // For show_tell mode, force all annotations to the show_tell type so the
-        // classifier doesn't accidentally mis-label them as 'style' or 'consistency'.
-        const overrideType = mode === 'show_tell' ? 'show_tell' : undefined
+        // Force annotation type for modes where the classifier might mis-label.
+        const overrideType =
+          mode === 'show_tell' ? 'show_tell' :
+          mode === 'weak_verbs' ? 'weak_verbs' :
+          mode === 'cliches' ? 'cliches' :
+          mode === 'past_progressive' ? 'past_progressive' :
+          undefined
         const { annotations: newAnnotations } = parseAnnotationsFromAIResponse(lastMsg.content, activeFileContent, overrideType)
         if (newAnnotations.length > 0) {
           const existing = useEditorStore.getState().annotations.filter((a) => a.type !== mode)
@@ -313,11 +332,14 @@ export function AnalysisToolbar(): JSX.Element {
   }
 
   const passiveCount = annotations.filter((a) => a.type === 'passive_voice').length
+  const pastProgressiveCount = annotations.filter((a) => a.type === 'past_progressive').length
+  const weakVerbsCount = annotations.filter((a) => a.type === 'weak_verbs').length
+  const clichesCount = annotations.filter((a) => a.type === 'cliches').length
   const consistencyCount = annotations.filter((a) => a.type === 'consistency').length
   const styleCount = annotations.filter((a) => a.type === 'style').length
   const showTellCount = annotations.filter((a) => a.type === 'show_tell').length
   const critiqueCount = annotations.filter((a) => a.type === 'critique').length
-  const totalCount = passiveCount + consistencyCount + styleCount + showTellCount + critiqueCount
+  const totalCount = passiveCount + pastProgressiveCount + weakVerbsCount + clichesCount + consistencyCount + styleCount + showTellCount + critiqueCount
   const anyActive = Boolean(analysisMode)
   const docWordCount = countWords(activeFileContent)
   const sentenceStats = activeFileContent ? computeSentenceStats(activeFileContent) : null
@@ -404,6 +426,27 @@ export function AnalysisToolbar(): JSX.Element {
                     >
                       <span>Passive Voice</span>
                       {passiveCount > 0 && <span className="toolbar-analyze-count">{passiveCount}</span>}
+                    </button>
+                    <button
+                      className={`context-menu-item${analysisMode === 'past_progressive' ? ' active' : ''}`}
+                      onClick={() => { setAnalyzeOpen(false); runPastProgressive() }}
+                    >
+                      <span>Past Progressive</span>
+                      {pastProgressiveCount > 0 && <span className="toolbar-analyze-count">{pastProgressiveCount}</span>}
+                    </button>
+                    <button
+                      className={`context-menu-item${analysisMode === 'weak_verbs' ? ' active' : ''}`}
+                      onClick={() => { setAnalyzeOpen(false); void runAIAnalysis('weak_verbs') }}
+                    >
+                      <span>Weak Verbs</span>
+                      {weakVerbsCount > 0 && <span className="toolbar-analyze-count">{weakVerbsCount}</span>}
+                    </button>
+                    <button
+                      className={`context-menu-item${analysisMode === 'cliches' ? ' active' : ''}`}
+                      onClick={() => { setAnalyzeOpen(false); void runAIAnalysis('cliches') }}
+                    >
+                      <span>Clichés</span>
+                      {clichesCount > 0 && <span className="toolbar-analyze-count">{clichesCount}</span>}
                     </button>
                     <button
                       className={`context-menu-item${analysisMode === 'consistency' ? ' active' : ''}`}

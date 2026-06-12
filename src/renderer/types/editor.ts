@@ -41,7 +41,7 @@ export interface ChatSession {
   messages: ChatMessage[]
 }
 
-export type AnnotationType = 'passive_voice' | 'consistency' | 'style' | 'show_tell' | 'critique' | 'custom' | 'user_comment' | 'document_note'
+export type AnnotationType = 'passive_voice' | 'past_progressive' | 'weak_verbs' | 'cliches' | 'consistency' | 'style' | 'show_tell' | 'critique' | 'custom' | 'user_comment' | 'document_note'
 
 export interface TextAnnotation {
   id: string
@@ -58,9 +58,9 @@ export interface TextAnnotation {
   comment?: string // user-written note text (only set for user_comment and document_note types)
 }
 
-export type AnalysisMode = 'none' | 'passive_voice' | 'consistency' | 'style' | 'show_tell' | 'critique'
+export type AnalysisMode = 'none' | 'passive_voice' | 'past_progressive' | 'weak_verbs' | 'cliches' | 'consistency' | 'style' | 'show_tell' | 'critique'
 
-export type AIMode = 'chat' | 'passive_voice' | 'consistency' | 'style' | 'show_tell' | 'critique'
+export type AIMode = 'chat' | 'passive_voice' | 'past_progressive' | 'weak_verbs' | 'cliches' | 'consistency' | 'style' | 'show_tell' | 'critique'
 
 export interface AIPayload {
   mode: AIMode

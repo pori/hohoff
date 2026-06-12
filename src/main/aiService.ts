@@ -160,6 +160,34 @@ PASSAGE: "[exact quoted text from the chapter]"
 PROBLEM: [one sentence explaining what is being told that should be shown]
 SUGGESTION: "[a concrete rewrite that shows the same moment through action, sensation, or dialogue]"`,
 
+    past_progressive: `Identify every instance of past progressive tense (was/were + verb-ing) in this chapter that would read more strongly in simple past tense.
+
+Do not flag past progressive that is grammatically necessary (e.g. interrupted actions: "She was reading when he entered"). Only flag cases where simple past would be tighter.
+
+For each instance:
+ISSUE: Past Progressive
+PASSAGE: "[exact quoted sentence from the chapter]"
+PROBLEM: [one sentence on why simple past would be stronger]
+SUGGESTION: "[rewritten in simple past]"`,
+
+    weak_verbs: `Identify sentences in this chapter where the main verb is weak — relying on "to be" (was, were, is, are), "to have" (had, has), "to get" (got), "to seem" (seemed, appeared), "to look" (looked), or "to feel" (felt) as the primary predicate when a stronger, more specific verb would make the prose more vivid.
+
+Do not flag auxiliary uses (passive voice, perfect aspect) — only flag cases where these are the main, load-bearing verb in the sentence.
+
+For each instance:
+ISSUE: Weak Verb
+PASSAGE: "[exact quoted sentence from the chapter]"
+PROBLEM: [explain what the weak verb is and why a stronger verb would serve better]
+SUGGESTION: "[rewritten with a more specific, active verb]"`,
+
+    cliches: `Identify every cliché, hackneyed phrase, or overused expression in this chapter. This includes worn-out metaphors, stock phrases, predictable comparisons, and any language that has become so common it has lost its impact.
+
+For each instance:
+ISSUE: Cliché
+PASSAGE: "[exact quoted phrase or sentence from the chapter]"
+PROBLEM: [name the cliché and briefly explain why it's stale]
+SUGGESTION: "[a fresher, more original alternative]"`,
+
     critique: `Give an honest, detailed critique of this chapter as a whole. Structure your response as follows:
 
 **Overall impression** (2–3 sentences on what the chapter achieves and its most significant weakness)
