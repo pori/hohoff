@@ -5,6 +5,7 @@
   height: 100%;
   overflow-y: auto;
   padding: 80px 40px 60px;
+  background: var(--page-bg);
 }
 
 .home-content {

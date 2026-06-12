@@ -11,7 +11,8 @@
   --bg-base:        #131110;
   --sidebar-bg:     #0f0e0c;
   --toolbar-bg:     #161412;
-  --editor-bg:      #131110;
+  --editor-bg:      #0c0b09;
+  --page-bg:        #1a1714;
   --message-bg:     #1c1a17;
   --user-message-bg:#1e1c17;
   --input-bg:       #1c1a17;
@@ -60,6 +61,9 @@ html.light {
 
   --accent:         #7a5c28;
   --accent-hover:   #9a7030;
+
+  --editor-bg:      #cfc4a8;
+  --page-bg:        #f5ecd8;
 }
 
 /* ─── Base ─────────────────────────────────────────────────────── */

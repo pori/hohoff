@@ -489,8 +489,8 @@ const paragraphIndentPlugin = ViewPlugin.fromClass(
 
 function buildTheme(fontSize: number, dark: boolean, focusMode = false): ReturnType<typeof EditorView.theme> {
   const displaySize = focusMode ? Math.max(fontSize + 3, 18) : fontSize
-  const maxWidth = focusMode ? '92vw' : '740px'
-  const padding = focusMode ? '40px 4vw' : '16px 20px'
+  const maxWidth = '100%'
+  const padding = focusMode ? '32px 108px' : '36px 96px'
   const lineHeight = focusMode ? '1.9' : '1.8'
   return EditorView.theme(
   {
@@ -503,13 +503,13 @@ function buildTheme(fontSize: number, dark: boolean, focusMode = false): ReturnT
     '.cm-scroller': {
       fontFamily: 'var(--font-serif)',
       lineHeight,
-      overflow: 'auto'
+      overflow: 'auto',
     },
     '.cm-content': {
       padding,
       maxWidth,
       margin: '0 auto',
-      caretColor: 'var(--accent)'
+      caretColor: 'var(--accent)',
     },
     '.cm-cursor': { borderLeftColor: 'var(--accent)' },
     '.cm-selectionBackground': { backgroundColor: 'var(--active-bg)' },

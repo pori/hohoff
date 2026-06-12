@@ -225,6 +225,7 @@ export default function App(): JSX.Element {
           <>
             <AnalysisToolbar />
             <div className="editor-body">
+              <div className="page-backdrop" />
               <DocumentOutline />
               <MarkdownEditor />
             </div>
