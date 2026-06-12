@@ -102,6 +102,132 @@ function pickExcerpt(files: { relativePath: string; content: string }[]): Excerp
   return candidates[seed % candidates.length]
 }
 
+interface DayBucket {
+  date: string   // 'YYYY-MM-DD'
+  label: string  // 'Jun 12'
+  added: number
+  removed: number
+  net: number
+}
+
+function buildDailyBuckets(sessions: TelemetrySession[], days = 30): DayBucket[] {
+  const buckets: Record<string, { added: number; removed: number }> = {}
+
+  // Pre-fill last N days so empty days still render
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date()
+    d.setDate(d.getDate() - i)
+    const key = d.toISOString().slice(0, 10)
+    buckets[key] = { added: 0, removed: 0 }
+  }
+
+  for (const s of sessions) {
+    const key = new Date(s.startedAt).toISOString().slice(0, 10)
+    if (!(key in buckets)) continue
+    for (const f of Object.values(s.files)) {
+      buckets[key].added += Math.max(0, f.wordsAdded)
+      buckets[key].removed += Math.max(0, f.wordsRemoved)
+    }
+  }
+
+  return Object.entries(buckets).map(([date, v]) => {
+    const d = new Date(date + 'T12:00:00')
+    const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    return { date, label, added: v.added, removed: v.removed, net: v.added - v.removed }
+  })
+}
+
+function DailyChart({ sessions }: { sessions: TelemetrySession[] }): JSX.Element {
+  const buckets = buildDailyBuckets(sessions, 30)
+  const maxVal = Math.max(...buckets.map(b => Math.max(b.added, b.removed)), 1)
+
+  const W = 560
+  const H = 100
+  const barAreaH = 80
+  const barW = Math.floor((W - 1) / buckets.length) - 1
+  const gap = Math.floor((W - 1) / buckets.length)
+
+  // Show a label every ~7 days
+  const labelStep = Math.ceil(buckets.length / 5)
+
+  return (
+    <div className="home-chart">
+      <div className="home-section-heading">Activity</div>
+      <svg viewBox={`0 0 ${W} ${H + 16}`} className="home-chart-svg" aria-label="Daily word activity">
+        {buckets.map((b, i) => {
+          const x = i * gap
+          const addH = Math.round((b.added / maxVal) * barAreaH)
+          const remH = Math.round((b.removed / maxVal) * barAreaH)
+          const showLabel = i % labelStep === 0
+
+          const topBarH = Math.max(addH, remH)
+          const hasActivity = b.added > 0 || b.removed > 0
+          const netLabel = b.net >= 0 ? `+${b.net}` : `−${Math.abs(b.net)}`
+
+          return (
+            <g key={b.date}>
+              {/* additions bar */}
+              {b.added > 0 && (
+                <rect
+                  x={x}
+                  y={barAreaH - addH}
+                  width={barW}
+                  height={addH}
+                  className="chart-bar-add"
+                  rx={1}
+                >
+                  <title>{b.label}: +{b.added} / −{b.removed}</title>
+                </rect>
+              )}
+              {/* removals bar (overlaid, semi-transparent) */}
+              {b.removed > 0 && (
+                <rect
+                  x={x}
+                  y={barAreaH - remH}
+                  width={barW}
+                  height={remH}
+                  className="chart-bar-rem"
+                  rx={1}
+                >
+                  <title>{b.label}: +{b.added} / −{b.removed}</title>
+                </rect>
+              )}
+              {/* net word count above bar */}
+              {hasActivity && (
+                <text
+                  x={x + barW / 2}
+                  y={barAreaH - topBarH - 4}
+                  className="chart-bar-label"
+                  textAnchor="middle"
+                >
+                  {netLabel}
+                </text>
+              )}
+              {/* day label */}
+              {showLabel && (
+                <text
+                  x={x + barW / 2}
+                  y={H + 12}
+                  className="chart-label"
+                  textAnchor="middle"
+                >
+                  {b.label}
+                </text>
+              )}
+            </g>
+          )
+        })}
+        {/* baseline */}
+        <line x1={0} y1={barAreaH} x2={W} y2={barAreaH} className="chart-baseline" />
+      </svg>
+      <div className="chart-legend">
+        <span className="chart-legend-add">additions</span>
+        <span className="chart-legend-rem">deletions</span>
+      </div>
+    </div>
+  )
+}
+
 function relativeTime(ts: number): string {
   const diff = Date.now() - ts
   const mins = Math.floor(diff / 60000)
@@ -116,6 +242,7 @@ function relativeTime(ts: number): string {
 export function HomeScreen(): JSX.Element {
   const { setActiveFile, activeFilePath, leaveHome } = useEditorStore()
   const [stats, setStats] = useState<Stats | null>(null)
+  const [sessions, setSessions] = useState<TelemetrySession[]>([])
   const [recentFiles, setRecentFiles] = useState<RecentFile[]>([])
   const [excerpt, setExcerpt] = useState<Excerpt | null>(null)
   const [projectTitle, setProjectTitle] = useState('Your Manuscript')
@@ -130,6 +257,7 @@ export function HomeScreen(): JSX.Element {
       ])
 
       setStats(computeStats(telemetry.sessions, projectWordCount))
+      setSessions(telemetry.sessions)
       setRecentFiles(getRecentFiles(telemetry.sessions))
       setExcerpt(pickExcerpt(allFiles))
       if (cfg.projectTitle) setProjectTitle(cfg.projectTitle)
@@ -174,6 +302,8 @@ export function HomeScreen(): JSX.Element {
 
           </div>
         )}
+
+        <DailyChart sessions={sessions} />
 
         {excerpt && (
           <div className="home-excerpt">
