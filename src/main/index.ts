@@ -242,13 +242,6 @@ function createWindow(): BrowserWindow {
     mainWindow.show()
   })
 
-  mainWindow.on('enter-full-screen', () => {
-    mainWindow.setWindowButtonVisibility(false)
-  })
-
-  mainWindow.on('leave-full-screen', () => {
-    mainWindow.setWindowButtonVisibility(true)
-  })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
