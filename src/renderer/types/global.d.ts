@@ -32,6 +32,7 @@ declare global {
       moveFile: (sourcePath: string, targetDirPath: string) => Promise<string>
       openStoryBible: () => Promise<{ path: string; content: string }>
       writeStoryBible: (content: string) => Promise<string>
+      openPublisherPack: () => Promise<{ path: string; content: string }>
       onMenuAction: (handler: (action: string) => void) => () => void
       searchFiles: (query: string, options: SearchOptions) => Promise<SearchFileResult[]>
       replaceInFiles: (query: string, replacement: string, options: SearchOptions, filePaths: string[]) => Promise<string[]>

@@ -9,6 +9,7 @@ const sessionFile = (): string => join(hohoffDir(), 'session.json')
 const telemetryFile = (): string => join(hohoffDir(), 'telemetry.json')
 const revisionsDir = (): string => join(hohoffDir(), 'revisions')
 export const getStoryBiblePath = (): string => join(hohoffDir(), 'Story Bible.md')
+export const getPublisherPackPath = (): string => join(hohoffDir(), 'Publisher Pack.md')
 const submissionsFile = (): string => join(hohoffDir(), 'submissions.json')
 
 const STORY_BIBLE_TEMPLATE = `# Story Bible
@@ -255,6 +256,27 @@ export async function openStoryBibleFile(): Promise<{ path: string; content: str
     await writeFile(getStoryBiblePath(), content, 'utf-8')
   }
   return { path: getStoryBiblePath(), content }
+}
+
+const PUBLISHER_PACK_TEMPLATE = `# Synopsis
+
+<!-- A concise summary of the novel's plot, themes, and arc -->
+
+# Author Bio
+
+<!-- A short professional biography in third person -->
+`
+
+export async function openPublisherPackFile(): Promise<{ path: string; content: string }> {
+  await mkdir(hohoffDir(), { recursive: true })
+  let content: string
+  try {
+    content = await readFile(getPublisherPackPath(), 'utf-8')
+  } catch {
+    content = PUBLISHER_PACK_TEMPLATE
+    await writeFile(getPublisherPackPath(), content, 'utf-8')
+  }
+  return { path: getPublisherPackPath(), content }
 }
 
 // Parse a markdown document into a preamble (text before first ## heading) and

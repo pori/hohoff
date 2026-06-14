@@ -38,6 +38,15 @@ export default function App(): JSX.Element {
       console.error('[App] openStoryBible failed:', err)
     }
   }
+
+  const handleOpenPublisherPack = async (): Promise<void> => {
+    try {
+      const { path, content } = await window.api.openPublisherPack()
+      setActiveFile(path, content)
+    } catch (err) {
+      console.error('[App] openPublisherPack failed:', err)
+    }
+  }
   const [sidebarOpen, setSidebarOpen] = useState(
     () => localStorage.getItem('sidebarOpen') !== 'false'
   )
@@ -212,16 +221,23 @@ export default function App(): JSX.Element {
           <button
             className="sidebar-nav-btn"
             onClick={handleOpenStoryBible}
-            title="Open Story Bible"
+            title="Story Bible"
           >
             <span className="sidebar-nav-icon">📖</span>
+          </button>
+          <button
+            className="sidebar-nav-btn"
+            onClick={handleOpenPublisherPack}
+            title="Publisher Pack"
+          >
+            <span className="sidebar-nav-label">Pack</span>
           </button>
           <button
             className={`sidebar-nav-btn${showSubmissions ? ' active' : ''}`}
             onClick={goSubmissions}
             title="Submissions"
           >
-            <span className="sidebar-nav-icon">✉</span>
+            <span className="sidebar-nav-label">Sub</span>
           </button>
         </div>
         <FileTree />

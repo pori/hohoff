@@ -95,6 +95,9 @@ contextBridge.exposeInMainWorld('api', {
   openStoryBible: (): Promise<{ path: string; content: string }> =>
     ipcRenderer.invoke('fs:openStoryBible'),
 
+  openPublisherPack: (): Promise<{ path: string; content: string }> =>
+    ipcRenderer.invoke('fs:openPublisherPack'),
+
   writeStoryBible: (content: string): Promise<string> =>
     ipcRenderer.invoke('fs:writeStoryBible', content),
 

@@ -2,7 +2,7 @@ import { ipcMain, dialog, BrowserWindow } from 'electron'
 import { readFileSync, writeFileSync, unlinkSync } from 'fs'
 import { extname, basename, join } from 'path'
 import { tmpdir } from 'os'
-import { listDraftFiles, readMarkdownFile, writeMarkdownFile, getProjectWordCount, saveOrderFile, readSession, writeSession, saveRevision, listRevisions, loadRevision, deleteRevision, renameFileOrDir, deleteFileOrDir, createMarkdownFile, createSubdirectory, moveFileOrDir, readStoryBibleFile, openStoryBibleFile, writeStoryBibleFile, searchAcrossFiles, replaceInFiles, readAllDraftFiles, readProjectConfig, writeProjectConfig, PROJECT_CONFIG_FIELDS, readTelemetry, readSubmissions, writeSubmissions } from './fileSystem'
+import { listDraftFiles, readMarkdownFile, writeMarkdownFile, getProjectWordCount, saveOrderFile, readSession, writeSession, saveRevision, listRevisions, loadRevision, deleteRevision, renameFileOrDir, deleteFileOrDir, createMarkdownFile, createSubdirectory, moveFileOrDir, readStoryBibleFile, openStoryBibleFile, writeStoryBibleFile, openPublisherPackFile, searchAcrossFiles, replaceInFiles, readAllDraftFiles, readProjectConfig, writeProjectConfig, PROJECT_CONFIG_FIELDS, readTelemetry, readSubmissions, writeSubmissions } from './fileSystem'
 import type { SearchOptions, ProjectConfig } from './fileSystem'
 import { streamMessage, resetClient } from './aiService'
 import { onWordSnapshot, flushTelemetry } from './telemetry'
@@ -89,6 +89,10 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('fs:writeStoryBible', async (_event, content: string) => {
     return await writeStoryBibleFile(content)
+  })
+
+  ipcMain.handle('fs:openPublisherPack', async () => {
+    return await openPublisherPackFile()
   })
 
   ipcMain.handle('fs:pickAttachments', async (event): Promise<Attachment[]> => {
