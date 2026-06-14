@@ -435,24 +435,147 @@ export function AnalysisToolbar(): JSX.Element {
               ≡
             </button>
             {activeFilePath && paragraphRhythm.length > 0 && (
-              <button
-                ref={rhythmButtonRef}
-                className={`toolbar-btn toolbar-btn-outline${rhythmOpen ? ' active' : ''}`}
-                onClick={() => setRhythmOpen(v => !v)}
-                title="Paragraph rhythm — sentence count per paragraph"
-              >
-                ∿
-              </button>
+              <>
+                <button
+                  ref={rhythmButtonRef}
+                  className={`toolbar-btn toolbar-btn-outline${rhythmOpen ? ' active' : ''}`}
+                  onClick={() => setRhythmOpen(v => !v)}
+                  title="Paragraph rhythm — sentence count per paragraph"
+                >
+                  ∿
+                </button>
+                {rhythmOpen && rhythmButtonRef.current && createPortal(
+                  (() => {
+                    const rect = rhythmButtonRef.current!.getBoundingClientRect()
+                    return (
+                      <div
+                        ref={rhythmMenuRef}
+                        className="toolbar-rhythm-popover"
+                        style={{ top: rect.bottom + 4, left: rect.left }}
+                      >
+                        <div className="toolbar-stats-header">
+                          <span className="toolbar-stats-title">Paragraph Rhythm</span>
+                          <button className="toolbar-stats-close" onClick={() => setRhythmOpen(false)}>×</button>
+                        </div>
+                        <div className="toolbar-stats-summary">
+                          <span><strong>{paragraphRhythm.length}</strong> paragraphs</span>
+                          <span>avg <strong>{Math.round(paragraphRhythm.reduce((s, p) => s + p.sentences, 0) / paragraphRhythm.length * 10) / 10}</strong> sentences</span>
+                        </div>
+                        <div className="toolbar-rhythm-list">
+                          {paragraphRhythm.map((p, i) => {
+                            const barW = Math.max(12, Math.round((p.words / maxParaWords) * 180))
+                            const color = sentenceCountColor(p.sentences)
+                            const preview = p.text.length > 80 ? p.text.slice(0, 80) + '…' : p.text
+                            return (
+                              <div
+                                key={i}
+                                className="toolbar-rhythm-row"
+                                title={`${p.sentences} sentence${p.sentences !== 1 ? 's' : ''} · ${p.words} words\n${preview}`}
+                              >
+                                <div
+                                  className="toolbar-rhythm-bar"
+                                  style={{ width: barW, background: color }}
+                                />
+                                <span className="toolbar-rhythm-count" style={{ color }}>{p.sentences}</span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                        <div className="toolbar-rhythm-legend">
+                          {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
+                            <div key={n} className="toolbar-rhythm-legend-item" title={`${n}${n === 8 ? '+' : ''} sentence${n !== 1 ? 's' : ''}`}>
+                              <div className="toolbar-rhythm-legend-swatch" style={{ background: sentenceCountColor(n) }} />
+                              <span>{n}{n === 8 ? '+' : ''}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })(),
+                  document.body
+                )}
+              </>
             )}
             {activeFilePath && sentenceStats && (
-              <button
-                ref={statsButtonRef}
-                className={`toolbar-btn toolbar-btn-stats${statsOpen ? ' active' : ''}`}
-                onClick={() => setStatsOpen(v => !v)}
-                title="Sentence length histogram"
-              >
-                ≈
-              </button>
+              <>
+                <button
+                  ref={statsButtonRef}
+                  className={`toolbar-btn toolbar-btn-stats${statsOpen ? ' active' : ''}`}
+                  onClick={() => setStatsOpen(v => !v)}
+                  title="Sentence length histogram"
+                >
+                  ≈
+                </button>
+                {statsOpen && statsButtonRef.current && createPortal(
+                  (() => {
+                    const rect = statsButtonRef.current!.getBoundingClientRect()
+                    const maxBin = Math.max(...sentenceStats.bins, 1)
+                    const CHART_H = 60
+                    return (
+                      <div
+                        ref={statsMenuRef}
+                        className="toolbar-stats-popover"
+                        style={{ top: rect.bottom + 4, left: rect.left }}
+                      >
+                        <div className="toolbar-stats-header">
+                          <span className="toolbar-stats-title">Sentence Lengths</span>
+                          <button className="toolbar-stats-close" onClick={() => setStatsOpen(false)}>×</button>
+                        </div>
+                        <div className="toolbar-stats-summary">
+                          <span>avg <strong>{Math.round(sentenceStats.avg * 10) / 10}w</strong></span>
+                          <span>σ <strong>{Math.round(sentenceStats.stdDev * 10) / 10}</strong></span>
+                          <span><strong>{sentenceStats.totalSentences}</strong> sentences</span>
+                        </div>
+                        <div className="toolbar-stats-chart" style={{ height: CHART_H }}>
+                          {sentenceStats.bins.map((count, i) => {
+                            const wordCount = i + 1
+                            const isTarget = wordCount >= 11 && wordCount <= 16
+                            const barH = count === 0 ? 0 : Math.max(2, Math.round((count / maxBin) * CHART_H))
+                            return (
+                              <div
+                                key={i}
+                                className={`toolbar-stats-bar${isTarget ? ' target' : ''}`}
+                                style={{ height: barH }}
+                                title={`${wordCount === 31 ? '31+' : wordCount}w: ${count} sentence${count !== 1 ? 's' : ''}`}
+                              />
+                            )
+                          })}
+                        </div>
+                        <div className="toolbar-stats-axis">
+                          <span>1</span>
+                          <span>8</span>
+                          <span className="toolbar-stats-axis-target">11–16 ●</span>
+                          <span>22</span>
+                          <span>31+</span>
+                        </div>
+                        {sentenceStats.outliers.length > 0 && (
+                          <div className="toolbar-stats-outliers">
+                            <div className="toolbar-stats-outliers-title">
+                              Flagged (≤4 or ≥26 words)
+                            </div>
+                            <div className="toolbar-stats-outliers-list">
+                              {sentenceStats.outliers.slice(0, 8).map((o, i) => (
+                                <div key={i} className="toolbar-stats-outlier">
+                                  <span className="toolbar-stats-outlier-wc">{o.wordCount}w</span>
+                                  <span className={`toolbar-stats-outlier-text${o.wordCount <= 4 ? ' short' : ' long'}`}>
+                                    {o.text.length > 55 ? o.text.slice(0, 55) + '…' : o.text}
+                                  </span>
+                                </div>
+                              ))}
+                              {sentenceStats.outliers.length > 8 && (
+                                <div className="toolbar-stats-outlier-more">
+                                  +{sentenceStats.outliers.length - 8} more
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })(),
+                  document.body
+                )}
+              </>
             )}
             <button
               ref={analyzeButtonRef}
@@ -552,126 +675,6 @@ export function AnalysisToolbar(): JSX.Element {
       </div>
 
       <div className="toolbar-right">
-        {activeFilePath && paragraphRhythm.length > 0 && rhythmOpen && rhythmButtonRef.current && createPortal(
-              (() => {
-                const rect = rhythmButtonRef.current!.getBoundingClientRect()
-                return (
-                  <div
-                    ref={rhythmMenuRef}
-                    className="toolbar-rhythm-popover"
-                    style={{ top: rect.bottom + 4, right: window.innerWidth - rect.right }}
-                  >
-                    <div className="toolbar-stats-header">
-                      <span className="toolbar-stats-title">Paragraph Rhythm</span>
-                      <button className="toolbar-stats-close" onClick={() => setRhythmOpen(false)}>×</button>
-                    </div>
-                    <div className="toolbar-stats-summary">
-                      <span><strong>{paragraphRhythm.length}</strong> paragraphs</span>
-                      <span>avg <strong>{Math.round(paragraphRhythm.reduce((s, p) => s + p.sentences, 0) / paragraphRhythm.length * 10) / 10}</strong> sentences</span>
-                    </div>
-                    <div className="toolbar-rhythm-list">
-                      {paragraphRhythm.map((p, i) => {
-                        const barW = Math.max(12, Math.round((p.words / maxParaWords) * 180))
-                        const color = sentenceCountColor(p.sentences)
-                        const preview = p.text.length > 80 ? p.text.slice(0, 80) + '…' : p.text
-                        return (
-                          <div
-                            key={i}
-                            className="toolbar-rhythm-row"
-                            title={`${p.sentences} sentence${p.sentences !== 1 ? 's' : ''} · ${p.words} words\n${preview}`}
-                          >
-                            <div
-                              className="toolbar-rhythm-bar"
-                              style={{ width: barW, background: color }}
-                            />
-                            <span className="toolbar-rhythm-count" style={{ color }}>{p.sentences}</span>
-                          </div>
-                        )
-                      })}
-                    </div>
-                    <div className="toolbar-rhythm-legend">
-                      {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
-                        <div key={n} className="toolbar-rhythm-legend-item" title={`${n}${n === 8 ? '+' : ''} sentence${n !== 1 ? 's' : ''}`}>
-                          <div className="toolbar-rhythm-legend-swatch" style={{ background: sentenceCountColor(n) }} />
-                          <span>{n}{n === 8 ? '+' : ''}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )
-              })(),
-              document.body
-        )}
-
-        {activeFilePath && sentenceStats && statsOpen && statsButtonRef.current && createPortal(
-              (() => {
-                const rect = statsButtonRef.current!.getBoundingClientRect()
-                const maxBin = Math.max(...sentenceStats.bins, 1)
-                const CHART_H = 60
-                return (
-                  <div
-                    ref={statsMenuRef}
-                    className="toolbar-stats-popover"
-                    style={{ top: rect.bottom + 4, right: window.innerWidth - rect.right }}
-                  >
-                    <div className="toolbar-stats-header">
-                      <span className="toolbar-stats-title">Sentence Lengths</span>
-                      <button className="toolbar-stats-close" onClick={() => setStatsOpen(false)}>×</button>
-                    </div>
-                    <div className="toolbar-stats-summary">
-                      <span>avg <strong>{Math.round(sentenceStats.avg * 10) / 10}w</strong></span>
-                      <span>σ <strong>{Math.round(sentenceStats.stdDev * 10) / 10}</strong></span>
-                      <span><strong>{sentenceStats.totalSentences}</strong> sentences</span>
-                    </div>
-                    <div className="toolbar-stats-chart" style={{ height: CHART_H }}>
-                      {sentenceStats.bins.map((count, i) => {
-                        const wordCount = i + 1
-                        const isTarget = wordCount >= 11 && wordCount <= 16
-                        const barH = count === 0 ? 0 : Math.max(2, Math.round((count / maxBin) * CHART_H))
-                        return (
-                          <div
-                            key={i}
-                            className={`toolbar-stats-bar${isTarget ? ' target' : ''}`}
-                            style={{ height: barH }}
-                            title={`${wordCount === 31 ? '31+' : wordCount}w: ${count} sentence${count !== 1 ? 's' : ''}`}
-                          />
-                        )
-                      })}
-                    </div>
-                    <div className="toolbar-stats-axis">
-                      <span>1</span>
-                      <span>8</span>
-                      <span className="toolbar-stats-axis-target">11–16 ●</span>
-                      <span>22</span>
-                      <span>31+</span>
-                    </div>
-                    {sentenceStats.outliers.length > 0 && (
-                      <div className="toolbar-stats-outliers">
-                        <div className="toolbar-stats-outliers-title">
-                          Flagged (≤4 or ≥26 words)
-                        </div>
-                        <div className="toolbar-stats-outliers-list">
-                          {sentenceStats.outliers.slice(0, 8).map((o, i) => (
-                            <div key={i} className="toolbar-stats-outlier">
-                              <span className="toolbar-stats-outlier-wc">{o.wordCount}w</span>
-                              <span className={`toolbar-stats-outlier-text${o.wordCount <= 4 ? ' short' : ' long'}`}>
-                                {o.text.length > 55 ? o.text.slice(0, 55) + '…' : o.text}
-                              </span>
-                            </div>
-                          ))}
-                          {sentenceStats.outliers.length > 8 && (
-                            <div className="toolbar-stats-outlier-more">
-                              +{sentenceStats.outliers.length - 8} more
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )
-              })(),
-              document.body
-        )}
         {activeFilePath && (
           <span
             className="toolbar-wordcount"
