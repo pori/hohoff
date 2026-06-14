@@ -133,7 +133,6 @@ export function AnalysisToolbar(): JSX.Element {
     toggleOutline,
     revisionPanelOpen,
     toggleRevisionPanel,
-    selectionWordCount
   } = useEditorStore()
 
   const streamingContentRef = useRef('')
@@ -533,11 +532,6 @@ export function AnalysisToolbar(): JSX.Element {
         >
           ≡
         </button>
-{selectionWordCount !== null && (
-          <span className="toolbar-selection-wordcount" title={`${selectionWordCount} words selected`}>
-            {formatWordCount(selectionWordCount)} sel
-          </span>
-        )}
         {activeFilePath && paragraphRhythm.length > 0 && (
           <>
             <button

@@ -35,6 +35,16 @@
   opacity: 0.8;
 }
 
+.statusbar-selection-wordcount {
+  opacity: 0.75;
+}
+
+.statusbar-selection-wordcount::before {
+  content: '·';
+  margin-right: 8px;
+  opacity: 0.5;
+}
+
 .statusbar-share-btn {
   background: none;
   border: none;

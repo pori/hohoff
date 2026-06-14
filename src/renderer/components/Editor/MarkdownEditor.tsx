@@ -685,7 +685,7 @@ export function MarkdownEditor(): JSX.Element {
   const [commentDraft, setCommentDraft] = useState('')
   const [wordStats, setWordStats] = useState<{ atCursor: number; total: number }>({ atCursor: 0, total: 0 })
   const wordTotalRef = useRef(0)
-  const { activeFilePath, activeFileContent, setContent, annotations, fontSize, theme, focusMode, scrollPositions, pendingScrollToLine, clearPendingScrollToLine } = useEditorStore()
+  const { activeFilePath, activeFileContent, setContent, annotations, fontSize, theme, focusMode, scrollPositions, pendingScrollToLine, clearPendingScrollToLine, selectionWordCount } = useEditorStore()
 
   function saveComment(): void {
     if (!pendingComment || !commentDraft.trim()) return
@@ -1134,6 +1134,9 @@ export function MarkdownEditor(): JSX.Element {
       {activeFilePath && (
         <div className="editor-statusbar">
           <span>word {wordStats.atCursor.toLocaleString()} of {wordStats.total.toLocaleString()}</span>
+          {selectionWordCount !== null && (
+            <span className="statusbar-selection-wordcount">{selectionWordCount.toLocaleString()} selected</span>
+          )}
           <button
             className="statusbar-share-btn"
             onClick={async () => {
