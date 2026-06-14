@@ -190,7 +190,16 @@ export function FileTreeNode({ node, depth, dirPath, siblings }: Props): JSX.Ele
         ]
       : [
           { label: 'Rename', action: startRename },
-          { label: 'Delete', action: submitDelete, danger: true }
+          { label: 'Delete', action: submitDelete, danger: true },
+          'separator',
+          {
+            label: 'Export as PDF',
+            action: async () => {
+              const content = await window.api.readFile(node.path)
+              const fileName = node.name.replace(/\.md$/, '')
+              await window.api.exportPDF(content, fileName)
+            }
+          }
         ]
 
   if (node.type === 'directory') {
