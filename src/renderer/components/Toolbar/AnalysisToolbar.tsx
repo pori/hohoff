@@ -421,6 +421,40 @@ export function AnalysisToolbar(): JSX.Element {
         ) : (
           <>
             <button
+              className={`toolbar-btn toolbar-btn-outline${revisionPanelOpen ? ' active' : ''}`}
+              onClick={toggleRevisionPanel}
+              title="Revision history"
+            >
+              ⟳
+            </button>
+            <button
+              className={`toolbar-btn toolbar-btn-outline${outlineOpen ? ' active' : ''}`}
+              onClick={toggleOutline}
+              title={outlineOpen ? 'Hide document outline' : 'Show document outline'}
+            >
+              ≡
+            </button>
+            {activeFilePath && paragraphRhythm.length > 0 && (
+              <button
+                ref={rhythmButtonRef}
+                className={`toolbar-btn toolbar-btn-outline${rhythmOpen ? ' active' : ''}`}
+                onClick={() => setRhythmOpen(v => !v)}
+                title="Paragraph rhythm — sentence count per paragraph"
+              >
+                ∿
+              </button>
+            )}
+            {activeFilePath && sentenceStats && (
+              <button
+                ref={statsButtonRef}
+                className={`toolbar-btn toolbar-btn-stats${statsOpen ? ' active' : ''}`}
+                onClick={() => setStatsOpen(v => !v)}
+                title="Sentence length histogram"
+              >
+                ≈
+              </button>
+            )}
+            <button
               ref={analyzeButtonRef}
               className={`toolbar-btn toolbar-analyze-btn${anyActive ? ' active' : ''}`}
               onClick={() => setAnalyzeOpen((v) => !v)}
@@ -518,31 +552,7 @@ export function AnalysisToolbar(): JSX.Element {
       </div>
 
       <div className="toolbar-right">
-        <button
-          className={`toolbar-btn toolbar-btn-outline${revisionPanelOpen ? ' active' : ''}`}
-          onClick={toggleRevisionPanel}
-          title="Revision history"
-        >
-          ⟳
-        </button>
-        <button
-          className={`toolbar-btn toolbar-btn-outline${outlineOpen ? ' active' : ''}`}
-          onClick={toggleOutline}
-          title={outlineOpen ? 'Hide document outline' : 'Show document outline'}
-        >
-          ≡
-        </button>
-        {activeFilePath && paragraphRhythm.length > 0 && (
-          <>
-            <button
-              ref={rhythmButtonRef}
-              className={`toolbar-btn toolbar-btn-outline${rhythmOpen ? ' active' : ''}`}
-              onClick={() => setRhythmOpen(v => !v)}
-              title="Paragraph rhythm — sentence count per paragraph"
-            >
-              ∿
-            </button>
-            {rhythmOpen && rhythmButtonRef.current && createPortal(
+        {activeFilePath && paragraphRhythm.length > 0 && rhythmOpen && rhythmButtonRef.current && createPortal(
               (() => {
                 const rect = rhythmButtonRef.current!.getBoundingClientRect()
                 return (
@@ -591,21 +601,9 @@ export function AnalysisToolbar(): JSX.Element {
                 )
               })(),
               document.body
-            )}
-          </>
         )}
 
-        {activeFilePath && sentenceStats && (
-          <>
-            <button
-              ref={statsButtonRef}
-              className={`toolbar-btn toolbar-btn-stats${statsOpen ? ' active' : ''}`}
-              onClick={() => setStatsOpen(v => !v)}
-              title="Sentence length histogram"
-            >
-              ≈
-            </button>
-            {statsOpen && statsButtonRef.current && createPortal(
+        {activeFilePath && sentenceStats && statsOpen && statsButtonRef.current && createPortal(
               (() => {
                 const rect = statsButtonRef.current!.getBoundingClientRect()
                 const maxBin = Math.max(...sentenceStats.bins, 1)
@@ -673,8 +671,6 @@ export function AnalysisToolbar(): JSX.Element {
                 )
               })(),
               document.body
-            )}
-          </>
         )}
         {activeFilePath && (
           <span
