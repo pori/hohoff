@@ -128,8 +128,6 @@ export function AnalysisToolbar(): JSX.Element {
     chatHistory,
     projectWordCount,
     setProjectWordCount,
-    fontSize,
-    setFontSize,
     setRightPanelTab,
     outlineOpen,
     toggleOutline,
@@ -535,25 +533,7 @@ export function AnalysisToolbar(): JSX.Element {
         >
           ≡
         </button>
-        <div className="toolbar-fontsize">
-          <button
-            className="toolbar-fontsize-btn"
-            onClick={() => setFontSize(fontSize - 1)}
-            disabled={fontSize <= 11}
-            title="Decrease font size"
-          >
-            A−
-          </button>
-          <button
-            className="toolbar-fontsize-btn"
-            onClick={() => setFontSize(fontSize + 1)}
-            disabled={fontSize >= 24}
-            title="Increase font size"
-          >
-            A+
-          </button>
-        </div>
-        {selectionWordCount !== null && (
+{selectionWordCount !== null && (
           <span className="toolbar-selection-wordcount" title={`${selectionWordCount} words selected`}>
             {formatWordCount(selectionWordCount)} sel
           </span>

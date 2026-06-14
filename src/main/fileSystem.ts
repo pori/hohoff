@@ -111,10 +111,11 @@ export interface ProjectConfig {
   authorAddress?: string
   authorEmail?: string
   authorPhone?: string
+  fontSize?: number
 }
 
 const PROJECT_CONFIG_FIELDS: (keyof ProjectConfig)[] = [
-  'projectTitle', 'authorName', 'penName', 'authorAddress', 'authorEmail', 'authorPhone'
+  'projectTitle', 'authorName', 'penName', 'authorAddress', 'authorEmail', 'authorPhone', 'fontSize'
 ]
 
 export { PROJECT_CONFIG_FIELDS }

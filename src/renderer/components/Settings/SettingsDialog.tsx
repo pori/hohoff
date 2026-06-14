@@ -17,6 +17,7 @@ export function SettingsDialog({ onClose, onProjectChanged, isSetup }: Props): J
   const [authorAddress, setAuthorAddress] = useState('')
   const [authorEmail, setAuthorEmail] = useState('')
   const [authorPhone, setAuthorPhone] = useState('')
+  const [fontSize, setFontSize] = useState<number>(15)
   const [saved, setSaved] = useState(false)
   const overlayRef = useRef<HTMLDivElement>(null)
 
@@ -31,6 +32,7 @@ export function SettingsDialog({ onClose, onProjectChanged, isSetup }: Props): J
       setAuthorAddress(cfg.authorAddress ?? '')
       setAuthorEmail(cfg.authorEmail ?? '')
       setAuthorPhone(cfg.authorPhone ?? '')
+      setFontSize(cfg.fontSize ?? 15)
     })
   }, [])
 
@@ -62,6 +64,7 @@ export function SettingsDialog({ onClose, onProjectChanged, isSetup }: Props): J
       authorAddress: authorAddress.trim() || undefined,
       authorEmail: authorEmail.trim() || undefined,
       authorPhone: authorPhone.trim() || undefined,
+      fontSize: fontSize,
     })
     if (projectPath !== originalPath) onProjectChanged?.()
     setOriginalPath(projectPath)
@@ -129,6 +132,25 @@ export function SettingsDialog({ onClose, onProjectChanged, isSetup }: Props): J
               spellCheck={false}
             />
             <p className="settings-hint">Used as the title in PDF exports. Defaults to the project folder name if left blank.</p>
+          </div>
+
+          <div className="settings-field">
+            <label className="settings-label">Editor Font Size</label>
+            <div className="settings-fontsize">
+              <button
+                className="settings-fontsize-btn"
+                onClick={() => setFontSize((s) => Math.max(11, s - 1))}
+                disabled={fontSize <= 11}
+                type="button"
+              >A−</button>
+              <span className="settings-fontsize-value">{fontSize}px</span>
+              <button
+                className="settings-fontsize-btn"
+                onClick={() => setFontSize((s) => Math.min(24, s + 1))}
+                disabled={fontSize >= 24}
+                type="button"
+              >A+</button>
+            </div>
           </div>
 
           <div className="settings-field">

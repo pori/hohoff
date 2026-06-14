@@ -96,6 +96,38 @@
   border-color: var(--accent);
 }
 
+.settings-fontsize {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.settings-fontsize-btn {
+  background: var(--btn-bg, rgba(255,255,255,0.08));
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 10px;
+}
+
+.settings-fontsize-btn:hover:not(:disabled) {
+  background: var(--btn-hover-bg, rgba(255,255,255,0.14));
+}
+
+.settings-fontsize-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.settings-fontsize-value {
+  font-size: 13px;
+  min-width: 36px;
+  text-align: center;
+  color: var(--text-muted, var(--text));
+}
+
 .settings-input--path {
   flex: 1;
   border-radius: 4px 0 0 4px;

@@ -10,7 +10,6 @@ export interface RecentProject {
 export interface GlobalConfig {
   apiKey?: string
   projectPath?: string
-  fontSize?: number
   theme?: 'dark' | 'light'
   recentProjects?: RecentProject[]
 }
