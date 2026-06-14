@@ -120,8 +120,8 @@ export function AnalysisToolbar(): JSX.Element {
     clearAnnotations,
     setAnalysisMode,
     addUserMessage,
-    startAssistantMessage,
-    appendToLastAssistantMessage,
+    finalizeAssistantMessage,
+    setStreamingContent,
     setAILoading,
     setAIError,
     linkAnnotationsToMessage,
@@ -137,6 +137,9 @@ export function AnalysisToolbar(): JSX.Element {
     toggleRevisionPanel,
     selectionWordCount
   } = useEditorStore()
+
+  const streamingContentRef = useRef('')
+  const streamingRafRef = useRef<number | null>(null)
 
   const [analyzeOpen, setAnalyzeOpen] = useState(false)
   const analyzeButtonRef = useRef<HTMLButtonElement>(null)
@@ -223,8 +226,8 @@ export function AnalysisToolbar(): JSX.Element {
     setAIError(null)
     setRightPanelTab('chat')
 
+    streamingContentRef.current = ''
     addUserMessage(prompt)
-    startAssistantMessage({ bibleGeneration: true })
     setAILoading(true)
 
     try {
@@ -239,9 +242,25 @@ export function AnalysisToolbar(): JSX.Element {
           userMessage: prompt
         },
         (chunk: string) => {
-          appendToLastAssistantMessage(chunk)
+          streamingContentRef.current += chunk
+          if (streamingRafRef.current === null) {
+            streamingRafRef.current = requestAnimationFrame(() => {
+              streamingRafRef.current = null
+              setStreamingContent(streamingContentRef.current)
+            })
+          }
         }
       )
+
+      if (streamingRafRef.current !== null) {
+        cancelAnimationFrame(streamingRafRef.current)
+        streamingRafRef.current = null
+      }
+      const finalContent = streamingContentRef.current
+      streamingContentRef.current = ''
+      if (finalContent.length > 0) {
+        finalizeAssistantMessage(finalContent, { bibleGeneration: true })
+      }
     } catch (err) {
       setAIError(err instanceof Error ? err.message : 'Generation failed')
     } finally {
@@ -286,8 +305,8 @@ export function AnalysisToolbar(): JSX.Element {
                   ? 'Please identify every past progressive construction (was/were + verb-ing) in this chapter that would be stronger in simple past.'
                   : 'Please give me an honest critique of this chapter.'
 
+    streamingContentRef.current = ''
     addUserMessage(prompt)
-    startAssistantMessage()
     setAILoading(true)
 
     try {
@@ -302,26 +321,42 @@ export function AnalysisToolbar(): JSX.Element {
           userMessage: prompt
         },
         (chunk: string) => {
-          appendToLastAssistantMessage(chunk)
+          streamingContentRef.current += chunk
+          if (streamingRafRef.current === null) {
+            streamingRafRef.current = requestAnimationFrame(() => {
+              streamingRafRef.current = null
+              setStreamingContent(streamingContentRef.current)
+            })
+          }
         }
       )
 
-      // Parse annotations from response
-      const currentHistory = useEditorStore.getState().chatHistory
-      const lastMsg = currentHistory[currentHistory.length - 1]
-      if (lastMsg?.role === 'assistant' && lastMsg.content.length > 0) {
-        // Force annotation type for modes where the classifier might mis-label.
+      if (streamingRafRef.current !== null) {
+        cancelAnimationFrame(streamingRafRef.current)
+        streamingRafRef.current = null
+      }
+      const finalContent = streamingContentRef.current
+      streamingContentRef.current = ''
+
+      if (finalContent.length > 0) {
+        finalizeAssistantMessage(finalContent)
+
+        // Parse annotations from response
         const overrideType =
           mode === 'show_tell' ? 'show_tell' :
           mode === 'weak_verbs' ? 'weak_verbs' :
           mode === 'cliches' ? 'cliches' :
           mode === 'past_progressive' ? 'past_progressive' :
           undefined
-        const { annotations: newAnnotations } = parseAnnotationsFromAIResponse(lastMsg.content, activeFileContent, overrideType)
+        const { annotations: newAnnotations } = parseAnnotationsFromAIResponse(finalContent, activeFileContent, overrideType)
         if (newAnnotations.length > 0) {
+          const currentHistory = useEditorStore.getState().chatHistory
+          const lastMsg = currentHistory[currentHistory.length - 1]
           const existing = useEditorStore.getState().annotations.filter((a) => a.type !== mode)
           setAnnotations([...existing, ...newAnnotations])
-          linkAnnotationsToMessage(lastMsg.id, newAnnotations.map(a => a.id))
+          if (lastMsg?.role === 'assistant') {
+            linkAnnotationsToMessage(lastMsg.id, newAnnotations.map(a => a.id))
+          }
         }
       }
     } catch (err) {

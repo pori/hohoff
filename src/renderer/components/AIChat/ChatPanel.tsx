@@ -32,8 +32,9 @@ export function ChatPanel(): JSX.Element {
     annotations,
     annotationsByFile,
     addUserMessage,
-    startAssistantMessage,
-    appendToLastAssistantMessage,
+    finalizeAssistantMessage,
+    setStreamingContent,
+    streamingContent,
     setAILoading,
     setAIError,
     setAnnotations,
@@ -49,6 +50,8 @@ export function ChatPanel(): JSX.Element {
   const [showHistory, setShowHistory] = useState(false)
   const [pendingAttachmentCount, setPendingAttachmentCount] = useState(0)
   const [feedbackNotice, setFeedbackNotice] = useState<string | null>(null)
+  const streamingContentRef = useRef('')
+  const streamingRafRef = useRef<number | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const scrollRafRef = useRef<number | null>(null)
   const prevAnnotationCountRef = useRef(annotations.length)
@@ -71,8 +74,8 @@ export function ChatPanel(): JSX.Element {
 
     setAIError(null)
     setFeedbackNotice(null)
+    streamingContentRef.current = ''
     addUserMessage(text, attachments.map(({ name, mimeType }) => ({ name, mimeType })))
-    startAssistantMessage()
     setAILoading(true)
 
     try {
@@ -89,22 +92,37 @@ export function ChatPanel(): JSX.Element {
           attachments: attachments.length > 0 ? attachments : undefined
         },
         (chunk: string) => {
-          appendToLastAssistantMessage(chunk)
+          streamingContentRef.current += chunk
+          if (streamingRafRef.current === null) {
+            streamingRafRef.current = requestAnimationFrame(() => {
+              streamingRafRef.current = null
+              setStreamingContent(streamingContentRef.current)
+            })
+          }
         }
       )
 
-      // After streaming, parse AI response for annotations.
-      // Attachment-driven messages are tagged 'custom' so they appear with a
-      // distinct visual treatment in the Feedback panel.
-      const currentHistory = useEditorStore.getState().chatHistory
-      const lastMsg = currentHistory[currentHistory.length - 1]
-      if (lastMsg?.role === 'assistant' && lastMsg.content.length > 0) {
+      // Cancel any pending rAF and commit to store once
+      if (streamingRafRef.current !== null) {
+        cancelAnimationFrame(streamingRafRef.current)
+        streamingRafRef.current = null
+      }
+      const finalContent = streamingContentRef.current
+      streamingContentRef.current = ''
+
+      if (finalContent.length > 0) {
+        finalizeAssistantMessage(finalContent)
+
         const overrideType = attachments.length > 0 ? 'custom' as const : undefined
         const latestContent = useEditorStore.getState().activeFileContent
-        const { annotations: parsed, droppedCount } = parseAnnotationsFromAIResponse(lastMsg.content, latestContent, overrideType)
+        const { annotations: parsed, droppedCount } = parseAnnotationsFromAIResponse(finalContent, latestContent, overrideType)
         if (parsed.length > 0) {
+          const currentHistory = useEditorStore.getState().chatHistory
+          const lastMsg = currentHistory[currentHistory.length - 1]
           setAnnotations(parsed)
-          linkAnnotationsToMessage(lastMsg.id, parsed.map(a => a.id))
+          if (lastMsg?.role === 'assistant') {
+            linkAnnotationsToMessage(lastMsg.id, parsed.map(a => a.id))
+          }
         }
         if (droppedCount > 0) {
           setFeedbackNotice(
@@ -120,7 +138,7 @@ export function ChatPanel(): JSX.Element {
     }
   }
 
-  // Auto-scroll to bottom when new content arrives (coalesced to one scroll per animation frame)
+  // Auto-scroll to bottom when new content arrives
   useEffect(() => {
     if (scrollRafRef.current !== null) return
     scrollRafRef.current = requestAnimationFrame(() => {
@@ -128,7 +146,7 @@ export function ChatPanel(): JSX.Element {
       const el = scrollRef.current
       if (el) el.scrollTop = el.scrollHeight
     })
-  }, [chatHistory])
+  }, [chatHistory, streamingContent])
 
   const hasFile = Boolean(activeFilePath)
   const allAnnotationsForFile: TextAnnotation[] =
@@ -137,7 +155,6 @@ export function ChatPanel(): JSX.Element {
   const sessions = (activeFilePath ? chatSessionsByFile[activeFilePath] : undefined) ?? []
   const activeSessionId = activeFilePath ? activeSessionIdByFile[activeFilePath] : undefined
 
-  // Subheader is shown in the chat tab once there is at least one session
   const showSubheader = tab === 'chat' && sessions.length > 0
 
   return (
@@ -160,7 +177,6 @@ export function ChatPanel(): JSX.Element {
           )}
         </button>
       </div>
-
 
       {/* ── Chat sub-header: History link + New Chat button ── */}
       {showSubheader && (
@@ -219,7 +235,7 @@ export function ChatPanel(): JSX.Element {
             {!hasFile && (
               <p className="chat-placeholder">Open a chapter to start a conversation about it.</p>
             )}
-            {hasFile && chatHistory.length === 0 && (
+            {hasFile && chatHistory.length === 0 && !isAILoading && (
               <p className="chat-placeholder">
                 Ask anything about the current chapter — passive voice, plot, character, style...
               </p>
@@ -236,11 +252,15 @@ export function ChatPanel(): JSX.Element {
                 />
               )
             })}
-            {isAILoading && chatHistory[chatHistory.length - 1]?.content === '' && (
-              <div className="chat-typing">
-                <span />
-                <span />
-                <span />
+            {isAILoading && (
+              <div className="chat-message chat-message-assistant">
+                <div className="chat-message-label">Editor AI</div>
+                <div className="chat-message-content">
+                  {streamingContent
+                    ? <span>{streamingContent}</span>
+                    : <div className="chat-typing"><span /><span /><span /></div>
+                  }
+                </div>
               </div>
             )}
             {aiError && (

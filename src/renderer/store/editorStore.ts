@@ -28,6 +28,9 @@ interface EditorState {
   addUserMessage: (text: string, attachments?: AttachmentMeta[]) => void
   startAssistantMessage: (opts?: { bibleGeneration?: boolean }) => void
   appendToLastAssistantMessage: (chunk: string) => void
+  finalizeAssistantMessage: (content: string, opts?: { bibleGeneration?: boolean }) => void
+  streamingContent: string
+  setStreamingContent: (content: string) => void
   setAILoading: (loading: boolean) => void
   setAIError: (error: string | null) => void
   newChat: () => void
@@ -216,6 +219,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   chatHistory: [],
   isAILoading: false,
   aiError: null,
+  streamingContent: '',
 
   addUserMessage: (text, attachments?) => {
     const msg: ChatMessage = { id: `user-${Date.now()}`, role: 'user', content: text, attachments }
@@ -273,6 +277,21 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       return { chatHistory: history }
     })
   },
+
+  finalizeAssistantMessage: (content, opts?) => {
+    const msg: ChatMessage = { id: `asst-${Date.now()}`, role: 'assistant', content, bibleGeneration: opts?.bibleGeneration }
+    set((s) => {
+      const history = [...s.chatHistory, msg]
+      if (!s.activeFilePath) return { chatHistory: history, streamingContent: '' }
+      const activeId = s.activeSessionIdByFile[s.activeFilePath]
+      const sessions = (s.chatSessionsByFile[s.activeFilePath] ?? []).map(sess =>
+        sess.id === activeId ? { ...sess, messages: history } : sess
+      )
+      return { chatHistory: history, chatSessionsByFile: { ...s.chatSessionsByFile, [s.activeFilePath]: sessions }, streamingContent: '' }
+    })
+  },
+
+  setStreamingContent: (content) => set({ streamingContent: content }),
 
   setAILoading: (isAILoading) => {
     set((s) => {

@@ -32,7 +32,8 @@ interface Props {
 }
 
 function ChatMessageItemInner({ message, linkedAnnotations }: Props): JSX.Element {
-  const { activeFilePath, markSaved } = useEditorStore()
+  const activeFilePath = useEditorStore(s => s.activeFilePath)
+  const markSaved = useEditorStore(s => s.markSaved)
 
   const html = useMemo(() => {
     if (message.role !== 'assistant' || !message.content) return null
