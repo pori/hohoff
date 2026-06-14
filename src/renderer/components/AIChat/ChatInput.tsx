@@ -177,15 +177,6 @@ export function ChatInput({ onSend, onAttachmentsChange, disabled }: Props): JSX
       )}
 
       <div className="chat-input-row">
-        <button
-          className="chat-paperclip-btn"
-          onClick={handleAttach}
-          disabled={disabled}
-          title="Attach file (image, text, PDF)"
-          aria-label="Attach file"
-        >
-          ⌁
-        </button>
         <textarea
           ref={textareaRef}
           className="chat-textarea"
@@ -198,14 +189,25 @@ export function ChatInput({ onSend, onAttachmentsChange, disabled }: Props): JSX
           disabled={disabled}
           rows={1}
         />
-        <button
-          className="chat-send-btn"
-          onClick={submit}
-          disabled={!canSend}
-          aria-label="Send"
-        >
-          ↑
-        </button>
+        <div className="chat-input-actions">
+          <button
+            className="chat-paperclip-btn"
+            onClick={handleAttach}
+            disabled={disabled}
+            title="Attach file (image, text, PDF)"
+            aria-label="Attach file"
+          >
+            ⌁
+          </button>
+          <button
+            className="chat-send-btn"
+            onClick={submit}
+            disabled={!canSend}
+            aria-label="Send"
+          >
+            ↑
+          </button>
+        </div>
       </div>
       {menuPos && (
         <ContextMenu

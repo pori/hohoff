@@ -491,11 +491,18 @@
   color: var(--text-primary);
 }
 
-/* ── Input row: paperclip + textarea + send ─── */
+/* ── Input row: textarea on top, buttons below ─── */
 .chat-input-row {
   display: flex;
-  align-items: flex-end;
-  gap: 8px;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.chat-input-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
 }
 
 .chat-paperclip-btn {
@@ -561,6 +568,7 @@
   padding: 8px 10px;
   resize: none;
   outline: none;
+  overflow: hidden;
   transition: border-color 0.15s;
   min-height: 36px;
 }
