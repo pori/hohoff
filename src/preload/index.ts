@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { FileNode, AIPayload, RevisionMeta, Attachment, SearchFileResult, GlobalConfig, TelemetryData } from '../renderer/types/editor'
+import type { FileNode, AIPayload, RevisionMeta, Attachment, SearchFileResult, GlobalConfig, TelemetryData, Submission } from '../renderer/types/editor'
 
 interface SearchOptions {
   caseSensitive: boolean
@@ -136,4 +136,10 @@ contextBridge.exposeInMainWorld('api', {
 
   readTelemetry: (): Promise<TelemetryData> =>
     ipcRenderer.invoke('telemetry:read'),
+
+  readSubmissions: (): Promise<Submission[]> =>
+    ipcRenderer.invoke('submissions:read'),
+
+  writeSubmissions: (data: Submission[]): Promise<void> =>
+    ipcRenderer.invoke('submissions:write', data),
 })

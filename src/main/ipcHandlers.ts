@@ -2,11 +2,11 @@ import { ipcMain, dialog, BrowserWindow } from 'electron'
 import { readFileSync, writeFileSync, unlinkSync } from 'fs'
 import { extname, basename, join } from 'path'
 import { tmpdir } from 'os'
-import { listDraftFiles, readMarkdownFile, writeMarkdownFile, getProjectWordCount, saveOrderFile, readSession, writeSession, saveRevision, listRevisions, loadRevision, deleteRevision, renameFileOrDir, deleteFileOrDir, createMarkdownFile, createSubdirectory, moveFileOrDir, readStoryBibleFile, openStoryBibleFile, writeStoryBibleFile, searchAcrossFiles, replaceInFiles, readAllDraftFiles, readProjectConfig, writeProjectConfig, PROJECT_CONFIG_FIELDS, readTelemetry } from './fileSystem'
+import { listDraftFiles, readMarkdownFile, writeMarkdownFile, getProjectWordCount, saveOrderFile, readSession, writeSession, saveRevision, listRevisions, loadRevision, deleteRevision, renameFileOrDir, deleteFileOrDir, createMarkdownFile, createSubdirectory, moveFileOrDir, readStoryBibleFile, openStoryBibleFile, writeStoryBibleFile, searchAcrossFiles, replaceInFiles, readAllDraftFiles, readProjectConfig, writeProjectConfig, PROJECT_CONFIG_FIELDS, readTelemetry, readSubmissions, writeSubmissions } from './fileSystem'
 import type { SearchOptions, ProjectConfig } from './fileSystem'
 import { streamMessage, resetClient } from './aiService'
 import { onWordSnapshot, flushTelemetry } from './telemetry'
-import type { AIPayload, Attachment } from '../renderer/types/editor'
+import type { AIPayload, Attachment, Submission } from '../renderer/types/editor'
 import { readGlobalConfig, writeGlobalConfig, getProjectTitle, addRecentProject, updateRecentProjectTitle } from './globalConfig'
 import type { GlobalConfig } from './globalConfig'
 
@@ -156,6 +156,14 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('telemetry:read', async () => {
     return await readTelemetry()
+  })
+
+  ipcMain.handle('submissions:read', async (): Promise<Submission[]> => {
+    return await readSubmissions()
+  })
+
+  ipcMain.handle('submissions:write', async (_event, data: Submission[]): Promise<void> => {
+    await writeSubmissions(data)
   })
 
   ipcMain.handle('ai:streamMessage', async (event, payload: AIPayload) => {

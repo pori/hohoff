@@ -11,6 +11,7 @@ import { RevisionPanel } from './components/Revisions/RevisionPanel'
 import { ProjectSearchModal } from './components/Search/ProjectSearchModal'
 import { SettingsDialog } from './components/Settings/SettingsDialog'
 import { HomeScreen } from './components/Home/HomeScreen'
+import { SubmissionsScreen } from './components/Submissions/SubmissionsScreen'
 import { useEditorStore } from './store/editorStore'
 import './styles/app.css'
 
@@ -19,7 +20,7 @@ export default function App(): JSX.Element {
     setFileTree, activeFilePath, isDirty, markSaved, activeFileContent, theme, toggleTheme,
     loadSession, revisionPanelOpen, toggleRevisionPanel, fontSize, setFontSize,
     openProjectSearch, clearActiveFile, initPrefs, focusMode, toggleFocusMode,
-    showHome, goHome, setActiveFile
+    showHome, goHome, setActiveFile, showSubmissions, goSubmissions
   } = useEditorStore()
 
   const handleOpenStoryBible = async (): Promise<void> => {
@@ -215,12 +216,21 @@ export default function App(): JSX.Element {
           >
             <span className="sidebar-nav-icon">📖</span>
           </button>
+          <button
+            className={`sidebar-nav-btn${showSubmissions ? ' active' : ''}`}
+            onClick={goSubmissions}
+            title="Submissions"
+          >
+            <span className="sidebar-nav-icon">✉</span>
+          </button>
         </div>
         <FileTree />
       </aside>
       <main className="editor-area" style={{ position: 'relative' }}>
         {showHome ? (
           <HomeScreen />
+        ) : showSubmissions ? (
+          <SubmissionsScreen />
         ) : (
           <>
             <AnalysisToolbar />

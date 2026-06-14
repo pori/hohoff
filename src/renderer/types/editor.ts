@@ -106,3 +106,19 @@ export interface SearchFileResult {
   relativePath: string
   matches: SearchMatch[]
 }
+
+export type SubmissionType = 'agent' | 'publisher' | 'competition' | 'other'
+export type SubmissionStatus = 'drafting' | 'submitted' | 'awaiting' | 'shortlisted' | 'rejected' | 'accepted' | 'withdrawn'
+
+export interface Submission {
+  id: string
+  recipient: string
+  type: SubmissionType
+  dateSubmitted: string | null  // ISO date YYYY-MM-DD
+  deadline: string | null       // ISO date YYYY-MM-DD
+  status: SubmissionStatus
+  queryLetter: string
+  notes: string
+  createdAt: number
+  updatedAt: number
+}

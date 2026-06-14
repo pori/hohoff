@@ -1,4 +1,4 @@
-import type { FileNode, AIPayload, RevisionMeta, Attachment, SearchFileResult, GlobalConfig } from './editor'
+import type { FileNode, AIPayload, RevisionMeta, Attachment, SearchFileResult, GlobalConfig, TelemetryData, Submission } from './editor'
 import type { ExportOptions } from '../components/Export/ExportDialog'
 
 interface SearchOptions {
@@ -40,6 +40,14 @@ declare global {
       pickProjectFolder: () => Promise<string | null>
       exportPDF: (content: string, fileName: string) => Promise<void>
       exportProjectPDF: (opts: ExportOptions) => Promise<void>
+      readAllDraftFiles: () => Promise<{ relativePath: string; content: string }[]>
+      trackWordSnapshot: (filePath: string, wordCount: number) => Promise<void>
+      flushTelemetry: () => Promise<void>
+      readTelemetry: () => Promise<TelemetryData>
+      readSubmissions: () => Promise<Submission[]>
+      writeSubmissions: (data: Submission[]) => Promise<void>
+      readSession: () => Promise<Record<string, unknown>>
+      writeSession: (data: Record<string, unknown>) => Promise<void>
     }
   }
 }

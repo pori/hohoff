@@ -1,6 +1,6 @@
 import { readdir, readFile, writeFile, mkdir, unlink, rename as fsRename, rm } from 'fs/promises'
 import { join, dirname, basename } from 'path'
-import type { FileNode, RevisionMeta, SearchMatch, SearchFileResult } from '../renderer/types/editor'
+import type { FileNode, RevisionMeta, SearchMatch, SearchFileResult, Submission } from '../renderer/types/editor'
 import { getDraftRoot } from './globalConfig'
 
 const hohoffDir = (): string => join(getDraftRoot(), '.hohoff')
@@ -9,6 +9,7 @@ const sessionFile = (): string => join(hohoffDir(), 'session.json')
 const telemetryFile = (): string => join(hohoffDir(), 'telemetry.json')
 const revisionsDir = (): string => join(hohoffDir(), 'revisions')
 export const getStoryBiblePath = (): string => join(hohoffDir(), 'Story Bible.md')
+const submissionsFile = (): string => join(hohoffDir(), 'submissions.json')
 
 const STORY_BIBLE_TEMPLATE = `# Story Bible
 
@@ -555,4 +556,17 @@ export async function replaceInFiles(
     }
   }
   return modified
+}
+
+export async function readSubmissions(): Promise<Submission[]> {
+  try {
+    return JSON.parse(await readFile(submissionsFile(), 'utf-8'))
+  } catch {
+    return []
+  }
+}
+
+export async function writeSubmissions(data: Submission[]): Promise<void> {
+  await mkdir(hohoffDir(), { recursive: true })
+  await writeFile(submissionsFile(), JSON.stringify(data, null, 2), 'utf-8')
 }

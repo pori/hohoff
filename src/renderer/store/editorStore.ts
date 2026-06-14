@@ -111,6 +111,11 @@ interface EditorState {
   goHome: () => void
   leaveHome: () => void
 
+  // Submissions screen
+  showSubmissions: boolean
+  goSubmissions: () => void
+  leaveSubmissions: () => void
+
   // Session persistence
   loadSession: () => Promise<void>
 }
@@ -190,6 +195,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       activeFileContent: content,
       isDirty: false,
       showHome: false,
+      showSubmissions: false,
       chatHistory: existing,
       annotations: savedAnnotationState?.annotations.filter(a => !a.applied && !a.dismissed) ?? [],
       analysisMode: savedAnnotationState?.mode ?? 'none'
@@ -679,8 +685,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   clearPendingScrollToLine: () => set({ pendingScrollToLine: null }),
 
   showHome: false,
-  goHome: () => set({ showHome: true }),
+  goHome: () => set({ showHome: true, showSubmissions: false }),
   leaveHome: () => set({ showHome: false }),
+
+  showSubmissions: false,
+  goSubmissions: () => set({ showSubmissions: true, showHome: false }),
+  leaveSubmissions: () => set({ showSubmissions: false }),
 
   loadSession: async () => {
     const api = (window as unknown as { api?: { readSession: () => Promise<Record<string, unknown>>; readFile: (p: string) => Promise<string> } }).api
