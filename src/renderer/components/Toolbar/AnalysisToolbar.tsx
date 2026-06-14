@@ -421,6 +421,100 @@ export function AnalysisToolbar(): JSX.Element {
         ) : (
           <>
             <button
+              ref={analyzeButtonRef}
+              className={`toolbar-btn toolbar-analyze-btn${anyActive ? ' active' : ''}`}
+              onClick={() => setAnalyzeOpen((v) => !v)}
+              disabled={!hasFile || isAILoading}
+              title="Run analysis on this chapter"
+            >
+              {isAILoading ? 'Analyzing…' : `Analyze ${analyzeOpen ? '▴' : '▾'}`}
+              {totalCount > 0 && !isAILoading && (
+                <span className="toolbar-analyze-badge">{totalCount}</span>
+              )}
+            </button>
+
+            {annotations.length > 0 && (
+              <button
+                className="toolbar-btn toolbar-btn-clear"
+                onClick={() => { clearAnnotations(); tooltipAnalysisCache.clear() }}
+                title="Remove all highlights"
+              >
+                Clear
+              </button>
+            )}
+
+            {analyzeOpen && analyzeButtonRef.current && createPortal(
+              (() => {
+                const rect = analyzeButtonRef.current!.getBoundingClientRect()
+                return (
+                  <div
+                    ref={analyzeMenuRef}
+                    className="context-menu toolbar-analyze-menu"
+                    style={{ top: rect.bottom + 4, left: rect.left }}
+                  >
+                    <button
+                      className={`context-menu-item${analysisMode === 'passive_voice' ? ' active' : ''}`}
+                      onClick={() => { setAnalyzeOpen(false); runPassiveVoice() }}
+                    >
+                      <span>Passive Voice</span>
+                      {passiveCount > 0 && <span className="toolbar-analyze-count">{passiveCount}</span>}
+                    </button>
+                    <button
+                      className={`context-menu-item${analysisMode === 'past_progressive' ? ' active' : ''}`}
+                      onClick={() => { setAnalyzeOpen(false); runPastProgressive() }}
+                    >
+                      <span>Past Progressive</span>
+                      {pastProgressiveCount > 0 && <span className="toolbar-analyze-count">{pastProgressiveCount}</span>}
+                    </button>
+                    <button
+                      className={`context-menu-item${analysisMode === 'weak_verbs' ? ' active' : ''}`}
+                      onClick={() => { setAnalyzeOpen(false); void runAIAnalysis('weak_verbs') }}
+                    >
+                      <span>Weak Verbs</span>
+                      {weakVerbsCount > 0 && <span className="toolbar-analyze-count">{weakVerbsCount}</span>}
+                    </button>
+                    <button
+                      className={`context-menu-item${analysisMode === 'cliches' ? ' active' : ''}`}
+                      onClick={() => { setAnalyzeOpen(false); void runAIAnalysis('cliches') }}
+                    >
+                      <span>Clichés</span>
+                      {clichesCount > 0 && <span className="toolbar-analyze-count">{clichesCount}</span>}
+                    </button>
+                    <button
+                      className={`context-menu-item${analysisMode === 'consistency' ? ' active' : ''}`}
+                      onClick={() => { setAnalyzeOpen(false); void runAIAnalysis('consistency') }}
+                    >
+                      <span>Consistency</span>
+                      {consistencyCount > 0 && <span className="toolbar-analyze-count">{consistencyCount}</span>}
+                    </button>
+                    <button
+                      className={`context-menu-item${analysisMode === 'style' ? ' active' : ''}`}
+                      onClick={() => { setAnalyzeOpen(false); void runAIAnalysis('style') }}
+                    >
+                      <span>Style</span>
+                      {styleCount > 0 && <span className="toolbar-analyze-count">{styleCount}</span>}
+                    </button>
+                    <button
+                      className={`context-menu-item${analysisMode === 'show_tell' ? ' active' : ''}`}
+                      onClick={() => { setAnalyzeOpen(false); void runAIAnalysis('show_tell') }}
+                    >
+                      <span>Show vs Tell</span>
+                      {showTellCount > 0 && <span className="toolbar-analyze-count">{showTellCount}</span>}
+                    </button>
+                    <button
+                      className={`context-menu-item${analysisMode === 'critique' ? ' active' : ''}`}
+                      onClick={() => { setAnalyzeOpen(false); void runAIAnalysis('critique') }}
+                    >
+                      <span>Critique</span>
+                      {critiqueCount > 0 && <span className="toolbar-analyze-count">{critiqueCount}</span>}
+                    </button>
+                  </div>
+                )
+              })(),
+              document.body
+            )}
+
+            <button
               className={`toolbar-btn toolbar-btn-outline${revisionPanelOpen ? ' active' : ''}`}
               onClick={toggleRevisionPanel}
               title="Revision history"
@@ -576,99 +670,6 @@ export function AnalysisToolbar(): JSX.Element {
                   document.body
                 )}
               </>
-            )}
-            <button
-              ref={analyzeButtonRef}
-              className={`toolbar-btn toolbar-analyze-btn${anyActive ? ' active' : ''}`}
-              onClick={() => setAnalyzeOpen((v) => !v)}
-              disabled={!hasFile || isAILoading}
-              title="Run analysis on this chapter"
-            >
-              {isAILoading ? 'Analyzing…' : `Analyze ${analyzeOpen ? '▴' : '▾'}`}
-              {totalCount > 0 && !isAILoading && (
-                <span className="toolbar-analyze-badge">{totalCount}</span>
-              )}
-            </button>
-
-            {annotations.length > 0 && (
-              <button
-                className="toolbar-btn toolbar-btn-clear"
-                onClick={() => { clearAnnotations(); tooltipAnalysisCache.clear() }}
-                title="Remove all highlights"
-              >
-                Clear
-              </button>
-            )}
-
-            {analyzeOpen && analyzeButtonRef.current && createPortal(
-              (() => {
-                const rect = analyzeButtonRef.current!.getBoundingClientRect()
-                return (
-                  <div
-                    ref={analyzeMenuRef}
-                    className="context-menu toolbar-analyze-menu"
-                    style={{ top: rect.bottom + 4, left: rect.left }}
-                  >
-                    <button
-                      className={`context-menu-item${analysisMode === 'passive_voice' ? ' active' : ''}`}
-                      onClick={() => { setAnalyzeOpen(false); runPassiveVoice() }}
-                    >
-                      <span>Passive Voice</span>
-                      {passiveCount > 0 && <span className="toolbar-analyze-count">{passiveCount}</span>}
-                    </button>
-                    <button
-                      className={`context-menu-item${analysisMode === 'past_progressive' ? ' active' : ''}`}
-                      onClick={() => { setAnalyzeOpen(false); runPastProgressive() }}
-                    >
-                      <span>Past Progressive</span>
-                      {pastProgressiveCount > 0 && <span className="toolbar-analyze-count">{pastProgressiveCount}</span>}
-                    </button>
-                    <button
-                      className={`context-menu-item${analysisMode === 'weak_verbs' ? ' active' : ''}`}
-                      onClick={() => { setAnalyzeOpen(false); void runAIAnalysis('weak_verbs') }}
-                    >
-                      <span>Weak Verbs</span>
-                      {weakVerbsCount > 0 && <span className="toolbar-analyze-count">{weakVerbsCount}</span>}
-                    </button>
-                    <button
-                      className={`context-menu-item${analysisMode === 'cliches' ? ' active' : ''}`}
-                      onClick={() => { setAnalyzeOpen(false); void runAIAnalysis('cliches') }}
-                    >
-                      <span>Clichés</span>
-                      {clichesCount > 0 && <span className="toolbar-analyze-count">{clichesCount}</span>}
-                    </button>
-                    <button
-                      className={`context-menu-item${analysisMode === 'consistency' ? ' active' : ''}`}
-                      onClick={() => { setAnalyzeOpen(false); void runAIAnalysis('consistency') }}
-                    >
-                      <span>Consistency</span>
-                      {consistencyCount > 0 && <span className="toolbar-analyze-count">{consistencyCount}</span>}
-                    </button>
-                    <button
-                      className={`context-menu-item${analysisMode === 'style' ? ' active' : ''}`}
-                      onClick={() => { setAnalyzeOpen(false); void runAIAnalysis('style') }}
-                    >
-                      <span>Style</span>
-                      {styleCount > 0 && <span className="toolbar-analyze-count">{styleCount}</span>}
-                    </button>
-                    <button
-                      className={`context-menu-item${analysisMode === 'show_tell' ? ' active' : ''}`}
-                      onClick={() => { setAnalyzeOpen(false); void runAIAnalysis('show_tell') }}
-                    >
-                      <span>Show vs Tell</span>
-                      {showTellCount > 0 && <span className="toolbar-analyze-count">{showTellCount}</span>}
-                    </button>
-                    <button
-                      className={`context-menu-item${analysisMode === 'critique' ? ' active' : ''}`}
-                      onClick={() => { setAnalyzeOpen(false); void runAIAnalysis('critique') }}
-                    >
-                      <span>Critique</span>
-                      {critiqueCount > 0 && <span className="toolbar-analyze-count">{critiqueCount}</span>}
-                    </button>
-                  </div>
-                )
-              })(),
-              document.body
             )}
           </>
         )}
