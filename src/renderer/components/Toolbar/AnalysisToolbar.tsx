@@ -373,9 +373,7 @@ export function AnalysisToolbar(): JSX.Element {
   const critiqueCount = annotations.filter((a) => a.type === 'critique').length
   const totalCount = passiveCount + pastProgressiveCount + weakVerbsCount + clichesCount + consistencyCount + styleCount + showTellCount + critiqueCount
   const anyActive = Boolean(analysisMode)
-  const docWordCount = countWords(activeFileContent)
   const sentenceStats = activeFileContent ? computeSentenceStats(activeFileContent) : null
-  const avgSentenceLen = sentenceStats ? Math.round(sentenceStats.avg * 10) / 10 : null
   const paragraphRhythm = activeFileContent ? computeParagraphRhythm(activeFileContent) : []
   const maxParaWords = paragraphRhythm.length > 0 ? Math.max(...paragraphRhythm.map(p => p.words)) : 1
 
@@ -676,22 +674,6 @@ export function AnalysisToolbar(): JSX.Element {
       </div>
 
       <div className="toolbar-right">
-        {activeFilePath && (
-          <span
-            className="toolbar-wordcount"
-            title={`This document: ${docWordCount.toLocaleString()} words · Entire project: ${projectWordCount.toLocaleString()} words${avgSentenceLen !== null ? ` · Avg sentence: ${avgSentenceLen} words` : ''}`}
-          >
-            {formatWordCount(docWordCount)}
-            <span className="toolbar-wordcount-sep">/</span>
-            {formatWordCount(projectWordCount)}
-            {avgSentenceLen !== null && (
-              <>
-                <span className="toolbar-wordcount-sep">·</span>
-                {avgSentenceLen}w
-              </>
-            )}
-          </span>
-        )}
         {isDirty && (
           <span className="toolbar-dirty" title="Unsaved changes — press Cmd+S to save">
             ●

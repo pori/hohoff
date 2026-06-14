@@ -45,6 +45,22 @@
   opacity: 0.5;
 }
 
+.statusbar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.statusbar-wordcount {
+  letter-spacing: 0.01em;
+}
+
+.statusbar-sep {
+  opacity: 0.45;
+  margin: 0 3px;
+}
+
 .statusbar-share-btn {
   background: none;
   border: none;

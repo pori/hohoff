@@ -685,7 +685,7 @@ export function MarkdownEditor(): JSX.Element {
   const [commentDraft, setCommentDraft] = useState('')
   const [wordStats, setWordStats] = useState<{ atCursor: number; total: number }>({ atCursor: 0, total: 0 })
   const wordTotalRef = useRef(0)
-  const { activeFilePath, activeFileContent, setContent, annotations, fontSize, theme, focusMode, scrollPositions, pendingScrollToLine, clearPendingScrollToLine, selectionWordCount } = useEditorStore()
+  const { activeFilePath, activeFileContent, setContent, annotations, fontSize, theme, focusMode, scrollPositions, pendingScrollToLine, clearPendingScrollToLine, selectionWordCount, projectWordCount } = useEditorStore()
 
   function saveComment(): void {
     if (!pendingComment || !commentDraft.trim()) return
@@ -1137,16 +1137,45 @@ export function MarkdownEditor(): JSX.Element {
           {selectionWordCount !== null && (
             <span className="statusbar-selection-wordcount">{selectionWordCount.toLocaleString()} selected</span>
           )}
-          <button
-            className="statusbar-share-btn"
-            onClick={async () => {
-              const fileName = activeFilePath.split('/').pop()?.replace(/\.md$/, '') ?? 'document'
-              await window.api.exportPDF(activeFileContent, fileName)
-            }}
-            title="Export document as PDF"
-          >
-            ⎙
-          </button>
+          <div className="statusbar-right">
+            {(() => {
+              const docWc = countWords(activeFileContent)
+              const sentences = activeFileContent
+                .split(/[.!?]+/)
+                .map((s: string) => s.trim())
+                .filter((s: string) => s.length > 0 && /\w/.test(s))
+              const avgLen = sentences.length > 0
+                ? Math.round((sentences.map((s: string) => countWords(s)).reduce((a: number, b: number) => a + b, 0) / sentences.length) * 10) / 10
+                : null
+              const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n)
+              return (
+                <span
+                  className="statusbar-wordcount"
+                  title={`This document: ${docWc.toLocaleString()} words · Entire project: ${projectWordCount.toLocaleString()} words${avgLen !== null ? ` · Avg sentence: ${avgLen} words` : ''}`}
+                >
+                  {fmt(docWc)}
+                  <span className="statusbar-sep">/</span>
+                  {fmt(projectWordCount)}
+                  {avgLen !== null && (
+                    <>
+                      <span className="statusbar-sep">·</span>
+                      {avgLen}w
+                    </>
+                  )}
+                </span>
+              )
+            })()}
+            <button
+              className="statusbar-share-btn"
+              onClick={async () => {
+                const fileName = activeFilePath.split('/').pop()?.replace(/\.md$/, '') ?? 'document'
+                await window.api.exportPDF(activeFileContent, fileName)
+              }}
+              title="Export document as PDF"
+            >
+              ⎙
+            </button>
+          </div>
         </div>
       )}
     </div>
