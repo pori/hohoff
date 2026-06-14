@@ -230,14 +230,14 @@ export default function App(): JSX.Element {
             onClick={handleOpenPublisherPack}
             title="Publisher Pack"
           >
-            <span className="sidebar-nav-label">Pack</span>
+            <span className="sidebar-nav-icon">📋</span>
           </button>
           <button
             className={`sidebar-nav-btn${showSubmissions ? ' active' : ''}`}
             onClick={goSubmissions}
             title="Submissions"
           >
-            <span className="sidebar-nav-label">Sub</span>
+            <span className="sidebar-nav-icon">✉️</span>
           </button>
         </div>
         <FileTree />
